@@ -95,7 +95,7 @@ const ProductSection = () => {
           <div className="flex gap-3 mt-6">
             <Link
               to="/preorder"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-[4px] border-foreground bg-gradient-cta px-8 py-4 font-display text-lg font-bold text-primary-foreground shadow-hero transition-shadow hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 md:px-12 md:py-5 md:text-xl"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-[4px] border-foreground bg-gradient-cta px-8 py-4 font-display text-lg font-bold text-white shadow-hero transition-shadow hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 md:px-12 md:py-5 md:text-xl"
             >
               Pre-order XUMI <ArrowRight size={20} />
             </Link>

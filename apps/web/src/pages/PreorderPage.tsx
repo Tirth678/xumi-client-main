@@ -572,7 +572,7 @@ const PreorderPage = () => {
                       <button
                         type="submit"
                         disabled={submitting}
-                        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border-[3px] border-foreground bg-gradient-cta px-8 font-display text-lg font-bold text-primary-foreground shadow-hero transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border-[3px] border-foreground bg-gradient-cta px-8 font-display text-lg font-bold text-white shadow-hero transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
                       >
                         {submitting ? (
                           <Loader2 size={20} className="animate-spin" />

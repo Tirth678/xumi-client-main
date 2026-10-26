@@ -19,7 +19,7 @@ const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
 
   const isHome = location.pathname === "/";
-  const shouldShowSolid = scrolled || !isHome;
+  const shouldShowSolid = scrolled || !isHome || mobileOpen;
 
   useEffect(() => {
     let frame = 0;
@@ -80,7 +80,7 @@ const Navbar = () => {
         className={`flex items-center gap-2 font-body text-sm font-semibold tracking-wider transition-colors ${
           shouldShowSolid
             ? "text-foreground hover:text-accent"
-            : "text-primary-foreground/90 hover:text-primary-foreground"
+            : "text-white/90 hover:text-white"
         } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
       >
         <LogOut size={18} /> LOGOUT
@@ -91,7 +91,7 @@ const Navbar = () => {
         className={`flex items-center gap-2 font-body text-sm font-semibold tracking-wider transition-colors ${
           shouldShowSolid
             ? "text-foreground hover:text-accent"
-            : "text-primary-foreground/90 hover:text-primary-foreground"
+            : "text-white/90 hover:text-white"
         } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
       >
         <User size={18} /> SIGN IN
@@ -115,7 +115,7 @@ const Navbar = () => {
             <button
               onClick={() => navigate("/")}
               className={`font-display text-xl md:text-2xl font-black tracking-tight transition-colors flex items-center gap-2 ${
-                shouldShowSolid ? "text-foreground" : "text-primary-foreground"
+                shouldShowSolid ? "text-foreground" : "text-white"
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
               aria-label="Go to RoboCraft home"
             >
@@ -129,7 +129,7 @@ const Navbar = () => {
               className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${
                 shouldShowSolid
                   ? "border-accent/50 bg-accent/10 text-accent"
-                  : "border-primary-foreground/40 bg-primary-foreground/10 text-primary-foreground"
+                  : "border-white/40 bg-white/10 text-white"
               }`}
             >
               Pre-orders open
@@ -145,13 +145,13 @@ const Navbar = () => {
                 className={`font-body text-sm font-semibold tracking-wider transition-colors relative group ${
                   shouldShowSolid
                     ? "text-foreground hover:text-accent"
-                    : "text-primary-foreground/90 hover:text-primary-foreground"
+                    : "text-white/90 hover:text-white"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
               >
                 {link.label}
                 <span
                   className={`absolute -bottom-1 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-300 ${
-                    shouldShowSolid ? "bg-accent" : "bg-primary-foreground"
+                    shouldShowSolid ? "bg-accent" : "bg-white"
                   }`}
                 />
               </button>
@@ -165,7 +165,7 @@ const Navbar = () => {
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className={`rounded-full p-2 transition-colors ${
-                shouldShowSolid ? "text-foreground" : "text-primary-foreground"
+                shouldShowSolid ? "text-foreground" : "text-white"
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
