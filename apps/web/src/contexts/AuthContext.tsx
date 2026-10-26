@@ -29,25 +29,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
 
-    // Skip redundant sync on OAuth callback page so handleOAuthCallback can consume the verifier cleanly
-    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
-      setIsLoading(false);
-      return;
-    }
-
-    syncNeonSession()
-      .then((auth) => {
-        if (active && auth) {
-          setStoredAuth(auth);
-        }
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-
+    // Always observe session changes, including the session published by the
+    // OAuth callback. Only the initial sync is skipped on that route.
     const unsubscribe = subscribeToAuthChange(() => {
       setStoredAuth(getStoredAuth());
     });
+
+    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+      // Let handleOAuthCallback consume the verifier without a competing sync.
+      setIsLoading(false);
+    } else {
+      syncNeonSession()
+        .then((auth) => {
+          if (active && auth) {
+            setStoredAuth(auth);
+          }
+        })
+        .finally(() => {
+          if (active) setIsLoading(false);
+        });
+    }
 
     return () => {
       active = false;
