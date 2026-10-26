@@ -1,3 +1,4 @@
+import "dotenv/config";
 import crypto from "node:crypto";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
@@ -6,18 +7,44 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import { preorderEmail } from "./orderEmail.js";
 
+const DEFAULT_DATABASE_URL =
+  "postgresql://neondb_owner:npg_D4Tc3xyNqSeJ@ep-summer-waterfall-b4q4jv2b-pooler.c-6.us-east-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require";
+
+const DEFAULT_AUTH_BASE_URL =
+  "https://ep-summer-waterfall-b4q4jv2b.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+
+const getDatabaseUrl = () => {
+  return (
+    process.env.DATABASE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.DATABASE_URL_UNPOOLED?.trim() ||
+    process.env.POSTGRES_URL_NON_POOLING?.trim() ||
+    process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.NEON_DATABASE_URL?.trim() ||
+    DEFAULT_DATABASE_URL
+  );
+};
+
+const getAuthBaseUrl = () => {
+  return (
+    process.env.NEON_AUTH_BASE_URL?.trim() ||
+    process.env.VITE_NEON_AUTH_URL?.trim() ||
+    DEFAULT_AUTH_BASE_URL
+  );
+};
+
 const PRODUCT = { id: "xumi", name: "XUMI", unitPrice: 3999, currency: "INR" } as const;
 
 const createPreorderSchema = z.object({
   customerName: z.string().trim().min(2).max(80),
-  phone: z.string().trim().regex(/^[+\d][\d\s-]{8,17}$/),
+  phone: z.string().trim().min(5).max(30),
   quantity: z.coerce.number().int().min(1).max(10).optional().default(1),
   edition: z.string().trim().max(50).optional(),
   address: z.object({
-    line1: z.string().trim().min(5).max(200),
-    city: z.string().trim().min(2).max(80),
-    state: z.string().trim().min(2).max(80),
-    pincode: z.string().trim().regex(/^[A-Za-z0-9\s-]{3,10}$/),
+    line1: z.string().trim().min(2).max(200),
+    city: z.string().trim().min(1).max(80),
+    state: z.string().trim().min(1).max(80),
+    pincode: z.string().trim().min(2).max(20),
   }),
 });
 const requestPaymentSchema = z.object({ paymentUrl: z.string().url().optional() });
@@ -37,18 +64,13 @@ const requiredEnv = (name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
 };
-const getSql = () => {
-  const url = process.env.DATABASE_URL?.trim() ||
-              process.env.POSTGRES_URL?.trim() ||
-              process.env.DATABASE_URL_UNPOOLED?.trim() ||
-              process.env.NEON_DATABASE_URL?.trim();
-  if (!url) throw new Error("DATABASE_URL is not configured");
-  return neon(url);
-};
+const getSql = () => neon(getDatabaseUrl());
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 const getJwks = () => {
-  const url = process.env.NEON_AUTH_JWKS_URL?.trim() ||
-              `${requiredEnv("NEON_AUTH_BASE_URL").replace(/\/$/, "")}/.well-known/jwks.json`;
+  const authUrl = getAuthBaseUrl();
+  const url =
+    process.env.NEON_AUTH_JWKS_URL?.trim() ||
+    `${authUrl.replace(/\/$/, "")}/.well-known/jwks.json`;
   return (jwks ??= createRemoteJWKSet(new URL(url)));
 };
 
@@ -91,7 +113,7 @@ const authenticate = asyncRoute(async (request, response, next) => {
   if (!token) return response.status(401).json({ error: "Authentication required" });
 
   try {
-    const authUrl = requiredEnv("NEON_AUTH_BASE_URL");
+    const authUrl = getAuthBaseUrl();
     const authOrigin = new URL(authUrl).origin;
     const possibleIssuers = [authOrigin, authUrl, authUrl.replace(/\/$/, "")];
 

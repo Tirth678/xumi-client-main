@@ -204,6 +204,12 @@ const PreorderPage = () => {
     }
   };
 
+  const onInvalid = (errors: Record<string, { message?: string }>) => {
+    const firstKey = Object.keys(errors)[0];
+    const message = errors[firstKey]?.message || "Please fill in all required shipping details.";
+    toast.error(message);
+  };
+
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
     try {
@@ -355,7 +361,7 @@ const PreorderPage = () => {
             <div className="grid gap-8 lg:grid-cols-2">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-6">
                     {/* SECTION 1: ACCOUNT & CONTACT DETAILS (AUTO-FILLED) */}
                     <div>
                       <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
