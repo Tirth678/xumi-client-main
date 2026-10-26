@@ -52,7 +52,7 @@ const AccountPage = () => {
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
     try {
-      const result = await loginWithGoogle();
+      const result = await loginWithGoogle("/account");
       if (!result.success) {
         toast.error(getSafeErrorMessage(new Error(result.error ?? ""), "Google sign-in failed."));
       }

@@ -189,8 +189,14 @@ export const loginWithEmail = async (
 /**
  * Login with Google via Neon Auth
  */
-export const loginWithGoogle = async (): Promise<AuthResponse> => {
+export const loginWithGoogle = async (redirectPath: string = "/preorder"): Promise<AuthResponse> => {
   try {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("auth_redirect", redirectPath);
+      } catch {}
+    }
+
     const { error } = await neonAuthClient.signIn.social({
       provider: "google",
       callbackURL: `${window.location.origin}/auth/callback`,

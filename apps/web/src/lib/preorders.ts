@@ -8,7 +8,13 @@ export interface Preorder {
   address: PreorderAddress; status: PreorderStatus; paymentUrl: string | null;
   bookingExpiresAt: string | null; paidAt: string | null; createdAt: string; updatedAt: string;
 }
-export interface PreorderInput { customerName: string; phone: string; address: PreorderAddress }
+export interface PreorderInput {
+  customerName: string;
+  phone: string;
+  quantity?: number;
+  edition?: string;
+  address: PreorderAddress;
+}
 
 const apiBase = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
 const parseResponse = async <T>(response: Response): Promise<T> => {

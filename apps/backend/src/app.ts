@@ -11,6 +11,8 @@ const PRODUCT = { id: "xumi", name: "XUMI", unitPrice: 3999, currency: "INR" } a
 const createPreorderSchema = z.object({
   customerName: z.string().trim().min(2).max(80),
   phone: z.string().trim().regex(/^[+\d][\d\s-]{8,17}$/),
+  quantity: z.coerce.number().int().min(1).max(10).optional().default(1),
+  edition: z.string().trim().max(50).optional(),
   address: z.object({
     line1: z.string().trim().min(5).max(200),
     city: z.string().trim().min(2).max(80),
@@ -101,9 +103,12 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
   await expireOverduePreorders();
   const existing = await sql`SELECT * FROM preorders WHERE user_id = ${user.id} AND status NOT IN ('expired', 'cancelled') ORDER BY created_at DESC LIMIT 1` as PreorderRow[];
   if (existing[0]) return response.status(200).json({ preorder: serializePreorder(existing[0]), existing: true });
+  const quantity = input.quantity ?? 1;
+  const productName = input.edition ? `${PRODUCT.name} (${input.edition})` : PRODUCT.name;
+  const totalAmount = PRODUCT.unitPrice * quantity;
   const rows = await sql`
     INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, quantity, unit_price, total_amount, currency, status, booking_expires_at)
-    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${PRODUCT.name}, 1, ${PRODUCT.unitPrice}, ${PRODUCT.unitPrice}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
+    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
   ` as PreorderRow[];
   const preorder = rows[0];
   const email = preorderEmail(preorder);

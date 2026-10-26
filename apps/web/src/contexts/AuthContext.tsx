@@ -5,6 +5,7 @@ import { logout as neonLogout, refreshAccessToken, syncNeonSession } from "@/lib
 export interface User {
   id: string;
   email: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
   role: string;
@@ -27,6 +28,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let active = true;
+
+    // Skip redundant sync on OAuth callback page so handleOAuthCallback can consume the verifier cleanly
+    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+      setIsLoading(false);
+      return;
+    }
 
     syncNeonSession()
       .then((auth) => {
@@ -79,9 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Role is stored by the Neon Auth sync (session user role), so the
     // storefront view of `user.role` never diverges from the identity provider.
     const inferredRole = storedAuth.role ?? "user";
+    const displayName =
+      storedAuth.name?.trim() ||
+      [storedAuth.firstName, storedAuth.lastName].filter(Boolean).join(" ").trim() ||
+      undefined;
     setUser({
       id: storedAuth.email,
       email: storedAuth.email,
+      name: displayName,
       firstName: storedAuth.firstName,
       lastName: storedAuth.lastName,
       role: inferredRole,

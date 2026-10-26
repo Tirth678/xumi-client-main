@@ -32,14 +32,16 @@ const SimpleAuthPage = () => {
       .then((res) => {
         if (res.success) {
           toast.success("Signed in with Google.");
-          navigate("/account");
+          const target = sessionStorage.getItem("auth_redirect") || "/preorder";
+          sessionStorage.removeItem("auth_redirect");
+          navigate(target);
           return;
         }
         toast.error(res.error || "Google authentication failed.");
         navigate("/login");
       })
-      .catch(() => {
-        toast.error("Google authentication failed.");
+      .catch((err) => {
+        toast.error(getSafeErrorMessage(err, "Google authentication failed."));
         navigate("/login");
       })
       .finally(() => setSubmitting(false));
@@ -48,7 +50,8 @@ const SimpleAuthPage = () => {
   const handleGoogleSignIn = async () => {
     setSubmitting(true);
     try {
-      const result = await loginWithGoogle();
+      const redirectTarget = sessionStorage.getItem("auth_redirect") || "/preorder";
+      const result = await loginWithGoogle(redirectTarget);
       if (!result.success) {
         toast.error(getSafeErrorMessage(new Error(result.error ?? ""), "Google sign-in failed."));
       }
@@ -70,7 +73,9 @@ const SimpleAuthPage = () => {
         : await loginWithEmail(email, password);
       if (!result.success) { toast.error(result.error || `${mode === "signup" ? "Sign-up" : "Sign-in"} failed.`); return; }
       toast.success(mode === "signup" ? "Account created." : "Signed in.");
-      navigate("/preorder");
+      const target = sessionStorage.getItem("auth_redirect") || "/preorder";
+      sessionStorage.removeItem("auth_redirect");
+      navigate(target);
     } catch (error) {
       toast.error(getSafeErrorMessage(error, "Authentication failed."));
     } finally { setSubmitting(false); }
