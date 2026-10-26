@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Truck } from "lucide-react";
+import { ArrowRight, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "./ScrollReveal";
 import {
   XUMI,
   XUMI_DISCOUNT_PERCENT,
-  XUMI_FEATURES,
   XUMI_GALLERY,
   XUMI_MRP_LABEL,
   XUMI_PRICE_LABEL,
@@ -101,19 +100,6 @@ const ProductSection = () => {
             </Link>
           </div>
 
-          <div className="mt-8 p-6 rounded-2xl border border-border">
-            <h4 className="font-display font-bold text-lg mb-4">What XUMI does</h4>
-            <ul className="space-y-2">
-              {XUMI_FEATURES.map((feature, i) => (
-                <ScrollReveal key={feature} delay={i * 0.05}>
-                  <li className="flex items-center gap-2">
-                    <Check size={18} className="text-accent flex-shrink-0" />
-                    <span className="font-body">{feature}</span>
-                  </li>
-                </ScrollReveal>
-              ))}
-            </ul>
-          </div>
         </ScrollReveal>
       </div>
     </section>

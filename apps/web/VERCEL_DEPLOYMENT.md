@@ -20,7 +20,8 @@ Set these for Production and the preview environments you intend to test:
 - `VITE_NEON_AUTH_URL` — same public Auth base URL, available at build time
 - `WEB_ORIGIN` — production site origin; comma-separate additional allowed origins
 - `RESEND_API_KEY`
-- `EMAIL_FROM` — sender on a verified Resend domain
+- `EMAIL_FROM` — defaults to `RoboCraft <onboarding@resend.dev>` for testing; use a verified domain for customer delivery
+- `EMAIL_REPLY_TO` — optional inbox for replies
 - `ADMIN_EMAIL` — inbox notified for every new pre-order
 - `ADMIN_API_KEY` — long random secret used only by the manual admin commands
 - `PAYMENT_URL` — optional default hosted payment link
@@ -64,3 +65,20 @@ curl -X POST -H "Authorization: Bearer $ADMIN_API_KEY" \
 The payment request starts the 15-day booking window and emails the order
 details, amount, and payment URL. After payment is manually verified, the last
 command records the payment and sends the confirmation email.
+
+## Check Resend email
+
+Set `RESEND_API_KEY` in `apps/backend/.env` for local checks (never commit it).
+Run `npm run email:check --workspace backend` to send to Resend's simulated
+`delivered@resend.dev` recipient. The command exits unsuccessfully for missing
+credentials, API rejection, network failure, or timeout. An accepted email ID
+confirms API submission; check the delivery event in the Resend dashboard.
+
+For an inbox test, run `npm run email:check --workspace backend -- YOUR_RESEND_ACCOUNT_EMAIL`.
+The default `onboarding@resend.dev` sender can send real mail only to the email
+associated with your Resend account. Customer emails require a verified domain
+and an `EMAIL_FROM` address on that domain. See
+https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
+
+Vercel secret values cannot be pulled locally. Set the key locally yourself to
+run the check. Changes to Vercel variables apply to new deployments.

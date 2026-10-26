@@ -5,12 +5,14 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   test: {
+    server: { deps: { inline: ["motion", "framer-motion", "motion-dom", "motion-utils"] } },
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: { "@": path.resolve(__dirname, "./src") },
   },
 });

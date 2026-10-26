@@ -5,6 +5,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { neon } from "@neondatabase/serverless";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
+import { sendEmail } from "./email.js";
 import { preorderEmail } from "./orderEmail.js";
 
 const DEFAULT_DATABASE_URL =
@@ -142,33 +143,6 @@ const authenticateAdmin = (request: Request, response: Response, next: NextFunct
 
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]!);
 const formatAmount = (amount: string | number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: PRODUCT.currency }).format(Number(amount));
-const sendEmail = async (to: string | string[], subject: string, html: string, text?: string) => {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    console.warn("RESEND_API_KEY is not configured; skipping email delivery to", to);
-    return;
-  }
-  try {
-    const result = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM?.trim() || "RoboCraft <onboarding@resend.dev>",
-        reply_to: process.env.EMAIL_REPLY_TO || "support@robocraft.com",
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        html,
-        text,
-      }),
-    });
-    if (!result.ok) {
-      const errorText = await result.text().catch(() => "");
-      console.error(`Email delivery failed (${result.status}): ${errorText.slice(0, 200)}`);
-    }
-  } catch (emailErr) {
-    console.error("Email send network/delivery error:", emailErr);
-  }
-};
 
 const serializePreorder = (row: PreorderRow) => ({
   id: row.id, productId: row.product_id, productName: row.product_name, price: Number(row.unit_price),
