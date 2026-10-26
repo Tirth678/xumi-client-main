@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { createPreorder, getPreorderFor } from "@/lib/preorders";
+import { createPreorder, getActivePreorder, getPreorders, type Preorder } from "@/lib/preorders";
 import { getSafeErrorMessage } from "@/lib/apiErrors";
 import { loginWithGoogle } from "@/lib/neonAuth";
 import { XUMI, XUMI_IMAGE, XUMI_MRP_LABEL, XUMI_PRICE_LABEL } from "@/data/productCatalog";
@@ -54,12 +54,24 @@ const PreorderPage = () => {
     }
   }, []);
 
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, token, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
 
-  const existingPreorder = isAuthenticated && user ? getPreorderFor(user.email) : null;
+  const [existingPreorder, setExistingPreorder] = useState<Preorder | null>(null);
+  const [loadingPreorder, setLoadingPreorder] = useState(false);
+
+  useEffect(() => {
+    if (!token) { setExistingPreorder(null); return; }
+    let active = true;
+    setLoadingPreorder(true);
+    getPreorders(token)
+      .then((orders) => { if (active) setExistingPreorder(getActivePreorder(orders)); })
+      .catch((error) => { if (active) toast.error(getSafeErrorMessage(error, "We couldn't load your pre-order.")); })
+      .finally(() => { if (active) setLoadingPreorder(false); });
+    return () => { active = false; };
+  }, [token]);
 
   const form = useForm<PreorderFormData>({
     resolver: zodResolver(preorderSchema),
@@ -73,17 +85,16 @@ const PreorderPage = () => {
     },
   });
 
-  const handleSubmit = (data: PreorderFormData) => {
-    if (!user) {
+  const handleSubmit = async (data: PreorderFormData) => {
+    if (!user || !token) {
       toast.error("Please sign in to pre-order XUMI.");
       return;
     }
 
     setSubmitting(true);
     try {
-      createPreorder({
+      await createPreorder({
         customerName: data.customerName,
-        email: user.email,
         phone: data.phone,
         address: {
           line1: data.line1,
@@ -91,9 +102,9 @@ const PreorderPage = () => {
           state: data.state,
           pincode: data.pincode,
         },
-      });
+      }, token);
       toast.success("Pre-order placed!", {
-        description: "Check My order any time to see if it is confirmed.",
+        description: "We emailed you a receipt. Payment details follow after review.",
       });
       navigate("/account");
     } catch (error) {
@@ -173,7 +184,7 @@ const PreorderPage = () => {
             One product, one launch. Reserve yours and we will confirm it by email.
           </p>
 
-          {isLoading ? (
+          {isLoading || loadingPreorder ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -185,7 +196,7 @@ const PreorderPage = () => {
             >
               <h2 className="font-display text-2xl font-bold">Sign in to continue</h2>
               <p className="mt-2 font-body text-sm text-muted-foreground">
-                Pre-orders are tied to your Google account so you can check your confirmation later.
+                Use Google or email and password so you can check your booking later.
               </p>
               <button
                 onClick={handleGoogleSignIn}
@@ -195,6 +206,9 @@ const PreorderPage = () => {
                 {signingIn ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
                 Continue with Google
               </button>
+              <Link to="/login" className="mt-3 inline-flex font-body text-sm font-bold text-foreground underline">
+                Sign in with email and password
+              </Link>
             </motion.div>
           ) : existingPreorder ? (
             <motion.div
@@ -322,7 +336,7 @@ const PreorderPage = () => {
                       {submitting ? <Loader2 size={20} className="animate-spin" /> : "Place pre-order"}
                     </button>
                     <p className="text-center font-body text-xs text-muted-foreground">
-                      No payment is taken now. We will email you when your XUMI is confirmed.
+                      No payment is taken now. We will email your amount and a 15-day payment link after review.
                     </p>
                   </form>
                 </Form>

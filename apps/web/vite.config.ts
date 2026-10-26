@@ -12,20 +12,9 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8081",
+        target: "http://127.0.0.1:3001",
         changeOrigin: true,
         secure: false,
-      },
-      "/payment": {
-        target: "http://127.0.0.1:8081",
-        changeOrigin: true,
-        secure: false,
-      },
-      "/inventory": {
-        target: "http://127.0.0.1:3002",
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/inventory/, ""),
       },
     },
   },
@@ -47,6 +36,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react()].filter(Boolean),
   resolve: {
+    // npm workspaces may hoist a second React for backend-only packages. Force
+    // every UI dependency to use the storefront's React/ReactDOM pair.
+    dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },

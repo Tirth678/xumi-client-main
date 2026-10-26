@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, ArrowRight, Loader2, LogOut, Mail, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { loginWithGoogle, handleOAuthCallback } from "@/lib/neonAuth";
+import { handleOAuthCallback, loginWithEmail, loginWithGoogle, registerWithEmail } from "@/lib/neonAuth";
 import { getSafeErrorMessage } from "@/lib/apiErrors";
 import GoogleIcon from "@/components/GoogleIcon";
 
@@ -13,6 +13,12 @@ const SimpleAuthPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">(
+    location.pathname === "/signup" || location.pathname === "/register" ? "signup" : "login",
+  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
 
   useEffect(() => {
     document.title = "Sign in | XUMI";
@@ -51,6 +57,23 @@ const SimpleAuthPage = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEmailAuth = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (password.length < 8) { toast.error("Password must be at least 8 characters."); return; }
+    setSubmitting(true);
+    try {
+      const parts = name.trim().split(/\s+/);
+      const result = mode === "signup"
+        ? await registerWithEmail(email, password, parts[0], parts.slice(1).join(" "))
+        : await loginWithEmail(email, password);
+      if (!result.success) { toast.error(result.error || `${mode === "signup" ? "Sign-up" : "Sign-in"} failed.`); return; }
+      toast.success(mode === "signup" ? "Account created." : "Signed in.");
+      navigate("/preorder");
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error, "Authentication failed."));
+    } finally { setSubmitting(false); }
   };
 
   const shell = (children: React.ReactNode) => (
@@ -134,8 +157,7 @@ const SimpleAuthPage = () => {
 
         <h1 className="font-display text-3xl font-black tracking-tight">Sign in to XUMI</h1>
         <p className="mx-auto mt-2 max-w-xs font-body text-sm text-muted-foreground">
-          One tap with Google. No passwords — we only use it to hold your pre-order and show you
-          its status.
+          Continue with Google or use your email and password. Your account keeps your booking secure.
         </p>
 
         <button
@@ -147,11 +169,35 @@ const SimpleAuthPage = () => {
           Continue with Google
         </button>
 
+        <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground">
+          <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <form onSubmit={handleEmailAuth} className="space-y-3 text-left">
+          {mode === "signup" && (
+            <label className="block font-body text-sm font-semibold">
+              Full name
+              <input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} autoComplete="name" className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 font-normal outline-none focus:ring-2 focus:ring-primary" />
+            </label>
+          )}
+          <label className="block font-body text-sm font-semibold">
+            Email
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 font-normal outline-none focus:ring-2 focus:ring-primary" />
+          </label>
+          <label className="block font-body text-sm font-semibold">
+            Password
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 font-normal outline-none focus:ring-2 focus:ring-primary" />
+          </label>
+          <button type="submit" disabled={submitting} className="flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 font-display text-sm font-bold text-primary-foreground disabled:opacity-50">
+            {submitting ? <Loader2 size={18} className="animate-spin" /> : mode === "signup" ? "Create account" : "Sign in with email"}
+          </button>
+        </form>
+
         <p className="mt-6 font-body text-xs text-muted-foreground">
-          New here?{" "}
-          <Link to="/preorder" className="font-bold text-foreground hover:underline">
-            Start a pre-order
-          </Link>
+          {mode === "login" ? "New here?" : "Already have an account?"}{" "}
+          <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="font-bold text-foreground hover:underline">
+            {mode === "login" ? "Create an account" : "Sign in"}
+          </button>
         </p>
 
         <div className="mt-8 border-t border-border pt-4">

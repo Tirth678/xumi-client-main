@@ -4,7 +4,7 @@ import { setStoredAuth, clearStoredAuth, getStoredAuth, type StoredAuth } from "
 
 const neonAuthUrl =
   import.meta.env.VITE_NEON_AUTH_URL ||
-  "https://ep-nameless-pine-b4l3jt2f.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+  "https://ep-summer-waterfall-b4q4jv2b.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
 
 export const neonAuthClient = createAuthClient(neonAuthUrl, {
   adapter: BetterAuthReactAdapter(),
@@ -287,4 +287,3 @@ export const logout = async (): Promise<AuthResponse> => {
     };
   }
 };
-

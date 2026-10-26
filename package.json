@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "turbo dev --filter=web",
     "dev:all": "turbo dev",
+    "dev:backend": "turbo dev --filter=backend",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
@@ -17,5 +18,9 @@
   },
   "devDependencies": {
     "turbo": "^2.3.0"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.4",
+    "@neon/env": "^1.6.5"
   }
 }

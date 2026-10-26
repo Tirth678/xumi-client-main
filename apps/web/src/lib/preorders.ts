@@ -1,128 +1,41 @@
-import { XUMI } from "@/data/productCatalog";
+import { refreshAccessToken } from "@/lib/neonAuth";
 
-export type PreorderStatus = "pending" | "confirmed";
-
-export interface PreorderAddress {
-  line1: string;
-  city: string;
-  state: string;
-  pincode: string;
-}
-
+export type PreorderStatus = "received" | "payment_pending" | "paid" | "expired" | "cancelled";
+export interface PreorderAddress { line1: string; city: string; state: string; pincode: string }
 export interface Preorder {
-  id: string;
-  productId: string;
-  productName: string;
-  price: number;
-  quantity: number;
-  customerName: string;
-  email: string;
-  phone: string;
-  address: PreorderAddress;
-  /** `pending` = reserved, waiting for RoboCraft to confirm. `confirmed` = locked in. */
-  status: PreorderStatus;
-  createdAt: string;
+  id: string; productId: string; productName: string; price: number; quantity: number;
+  totalAmount: number; currency: string; customerName: string; email: string; phone: string;
+  address: PreorderAddress; status: PreorderStatus; paymentUrl: string | null;
+  bookingExpiresAt: string | null; paidAt: string | null; createdAt: string; updatedAt: string;
 }
+export interface PreorderInput { customerName: string; phone: string; address: PreorderAddress }
 
-export interface PreorderInput {
-  customerName: string;
-  email: string;
-  phone: string;
-  address: PreorderAddress;
-}
-
-/**
- * Pre-orders are kept in the browser for now so the launch flow works without a
- * backend. Every read/write goes through this module, so swapping it for the
- * real `/api/preorders` calls later is a change in one file.
- */
-const STORAGE_KEY = "xumi-preorders";
-const PREORDER_EVENT = "xumi-preorders-changed";
-
-const isPreorder = (value: unknown): value is Preorder => {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<Preorder>;
-  return (
-    typeof candidate.id === "string" &&
-    typeof candidate.email === "string" &&
-    typeof candidate.createdAt === "string" &&
-    (candidate.status === "pending" || candidate.status === "confirmed")
-  );
+const apiBase = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
+const parseResponse = async <T>(response: Response): Promise<T> => {
+  const body = await response.json().catch(() => ({})) as { error?: string };
+  if (!response.ok) throw new Error(body.error || "The request failed. Please try again.");
+  return body as T;
 };
-
-const readAll = (): Preorder[] => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isPreorder) : [];
-  } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return [];
+const authorizedFetch = async (path: string, token: string, init?: RequestInit) => {
+  const request = (accessToken: string) => fetch(`${apiBase}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers, Authorization: `Bearer ${accessToken}` },
+  });
+  let response = await request(token);
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) response = await request(refreshed);
   }
+  return response;
 };
 
-const writeAll = (preorders: Preorder[]) => {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preorders));
-  window.dispatchEvent(new Event(PREORDER_EVENT));
+export const getPreorders = async (token: string): Promise<Preorder[]> => {
+  const response = await authorizedFetch("/api/preorders", token);
+  return (await parseResponse<{ preorders: Preorder[] }>(response)).preorders;
 };
-
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
-
-const createPreorderId = () => {
-  const stamp = Date.now().toString(36).toUpperCase().slice(-5);
-  const random = Math.random().toString(36).toUpperCase().slice(2, 5);
-  return `XM-${stamp}${random}`;
-};
-
-/** The signed-in customer's pre-order, or `null` if they have not ordered yet. */
-export const getPreorderFor = (email: string): Preorder | null => {
-  const target = normalizeEmail(email);
-  const match = readAll()
-    .filter((preorder) => normalizeEmail(preorder.email) === target)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-
-  return match ?? null;
-};
-
-/** A customer can hold one place in the pre-order queue at a time. */
-export const createPreorder = (input: PreorderInput): Preorder => {
-  const email = normalizeEmail(input.email);
-  const existing = getPreorderFor(email);
-
-  if (existing) {
-    return existing;
-  }
-
-  const preorder: Preorder = {
-    id: createPreorderId(),
-    productId: XUMI.id,
-    productName: XUMI.name,
-    price: XUMI.price,
-    quantity: 1,
-    customerName: input.customerName.trim(),
-    email,
-    phone: input.phone.trim(),
-    address: {
-      line1: input.address.line1.trim(),
-      city: input.address.city.trim(),
-      state: input.address.state.trim(),
-      pincode: input.address.pincode.trim(),
-    },
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  };
-
-  writeAll([...readAll(), preorder]);
-  return preorder;
-};
-
-export const subscribeToPreorders = (callback: () => void) => {
-  window.addEventListener(PREORDER_EVENT, callback);
-  window.addEventListener("storage", callback);
-
-  return () => {
-    window.removeEventListener(PREORDER_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+export const getActivePreorder = (preorders: Preorder[]) =>
+  preorders.find((preorder) => !["expired", "cancelled"].includes(preorder.status)) ?? preorders[0] ?? null;
+export const createPreorder = async (input: PreorderInput, token: string): Promise<Preorder> => {
+  const response = await authorizedFetch("/api/preorders", token, { method: "POST", body: JSON.stringify(input) });
+  return (await parseResponse<{ preorder: Preorder }>(response)).preorder;
 };

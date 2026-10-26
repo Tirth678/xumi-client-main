@@ -1,7 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import type { ReactElement } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
@@ -14,8 +13,6 @@ const PreorderPage = lazy(() => import("./pages/PreorderPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const SimpleAuthPage = lazy(() => import("./pages/SimpleAuthPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-
-const queryClient = new QueryClient();
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -47,19 +44,17 @@ const AnimatedRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Suspense fallback={<RouteFallback />}>
-            <AnimatedRoutes />
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <TooltipProvider>
+    <AuthProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Suspense fallback={<RouteFallback />}>
+          <AnimatedRoutes />
+        </Suspense>
+      </BrowserRouter>
+    </AuthProvider>
+  </TooltipProvider>
 );
 
 export default App;
