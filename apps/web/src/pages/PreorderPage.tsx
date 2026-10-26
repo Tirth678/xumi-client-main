@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { createPreorder, getActivePreorder, getPreorders, type Preorder } from "@/lib/preorders";
 import { getSafeErrorMessage } from "@/lib/apiErrors";
-import { loginWithGoogle } from "@/lib/neonAuth";
+import { loginWithGoogle, refreshAccessToken } from "@/lib/neonAuth";
 import { XUMI, XUMI_IMAGE } from "@/data/productCatalog";
 import GoogleIcon from "@/components/GoogleIcon";
 
@@ -155,7 +155,11 @@ const PreorderPage = () => {
   const totalSavings = totalMrp - totalAmount;
 
   const handleSubmit = async (data: PreorderFormData) => {
-    if (!user || !token) {
+    let activeToken = token;
+    if (!activeToken) {
+      activeToken = await refreshAccessToken();
+    }
+    if (!user || !activeToken) {
       toast.error("Please sign in to pre-order XUMI.");
       return;
     }
@@ -170,7 +174,9 @@ const PreorderPage = () => {
         localStorage.setItem("xumi_address_city", data.city);
         localStorage.setItem("xumi_address_state", data.state);
         localStorage.setItem("xumi_address_pincode", data.pincode);
-      } catch {}
+      } catch (_err) {
+        // ignore localStorage access issues in private browsing
+      }
 
       await createPreorder(
         {
@@ -185,7 +191,7 @@ const PreorderPage = () => {
             pincode: data.pincode,
           },
         },
-        token,
+        activeToken,
       );
       toast.success("Pre-order placed!", {
         description: "We emailed you a confirmation receipt. Payment details follow after review.",
@@ -317,7 +323,9 @@ const PreorderPage = () => {
                 onClick={() => {
                   try {
                     sessionStorage.setItem("auth_redirect", "/preorder");
-                  } catch {}
+                  } catch (_err) {
+                    // ignore sessionStorage errors
+                  }
                 }}
                 className="mt-4 inline-flex font-body text-sm font-bold text-foreground underline"
               >

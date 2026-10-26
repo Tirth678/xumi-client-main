@@ -194,7 +194,9 @@ export const loginWithGoogle = async (redirectPath: string = "/preorder"): Promi
     if (typeof window !== "undefined") {
       try {
         sessionStorage.setItem("auth_redirect", redirectPath);
-      } catch {}
+      } catch (_err) {
+        // ignore sessionStorage errors
+      }
     }
 
     const { error } = await neonAuthClient.signIn.social({

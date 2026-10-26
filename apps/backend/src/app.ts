@@ -37,15 +37,48 @@ const requiredEnv = (name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
 };
-const getSql = () => neon(requiredEnv("DATABASE_URL"));
+const getSql = () => {
+  const url = process.env.DATABASE_URL?.trim() ||
+              process.env.POSTGRES_URL?.trim() ||
+              process.env.DATABASE_URL_UNPOOLED?.trim() ||
+              process.env.NEON_DATABASE_URL?.trim();
+  if (!url) throw new Error("DATABASE_URL is not configured");
+  return neon(url);
+};
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
-const getJwks = () => (jwks ??= createRemoteJWKSet(new URL(requiredEnv("NEON_AUTH_JWKS_URL"))));
+const getJwks = () => {
+  const url = process.env.NEON_AUTH_JWKS_URL?.trim() ||
+              `${requiredEnv("NEON_AUTH_BASE_URL").replace(/\/$/, "")}/.well-known/jwks.json`;
+  return (jwks ??= createRemoteJWKSet(new URL(url)));
+};
 
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-const allowedOrigins = () => (process.env.WEB_ORIGIN ?? "http://localhost:8080,http://localhost:5173").split(",").map((v) => v.trim()).filter(Boolean);
-app.use(cors({ origin: (origin, callback) => !origin || allowedOrigins().includes(origin) ? callback(null, true) : callback(new Error("Origin is not allowed")) }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const envOrigins = (process.env.WEB_ORIGIN ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+    if (envOrigins.includes("*") || envOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    try {
+      const parsed = new URL(origin);
+      if (
+        parsed.hostname.endsWith(".vercel.app") ||
+        parsed.hostname === "localhost" ||
+        parsed.hostname === "127.0.0.1"
+      ) {
+        return callback(null, true);
+      }
+    } catch {}
+    if (envOrigins.length === 0) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "32kb" }));
 
 const asyncRoute = (handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
@@ -54,11 +87,23 @@ const asyncRoute = (handler: (req: Request, res: Response, next: NextFunction) =
 const authenticate = asyncRoute(async (request, response, next) => {
   const header = request.header("authorization");
   if (!header?.startsWith("Bearer ")) return response.status(401).json({ error: "Authentication required" });
-  const { payload } = await jwtVerify(header.slice(7).trim(), getJwks(), { issuer: requiredEnv("NEON_AUTH_BASE_URL") });
-  const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
-  if (!payload.sub || !email) return response.status(401).json({ error: "The session is missing required identity claims" });
-  (request as AuthenticatedRequest).user = { id: payload.sub, email, name: typeof payload.name === "string" ? payload.name : undefined };
-  next();
+  const token = header.slice(7).trim();
+  if (!token) return response.status(401).json({ error: "Authentication required" });
+
+  try {
+    const authUrl = requiredEnv("NEON_AUTH_BASE_URL");
+    const authOrigin = new URL(authUrl).origin;
+    const possibleIssuers = [authOrigin, authUrl, authUrl.replace(/\/$/, "")];
+
+    const { payload } = await jwtVerify(token, getJwks(), { issuer: possibleIssuers });
+    const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    if (!payload.sub || !email) return response.status(401).json({ error: "The session is missing required identity claims" });
+    (request as AuthenticatedRequest).user = { id: payload.sub, email, name: typeof payload.name === "string" ? payload.name : undefined };
+    next();
+  } catch (err) {
+    console.error("JWT verification failed:", err);
+    return response.status(401).json({ error: "Invalid or expired session. Please sign in again." });
+  }
 });
 
 const constantTimeEqual = (left: string, right: string) => {
@@ -76,12 +121,31 @@ const authenticateAdmin = (request: Request, response: Response, next: NextFunct
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]!);
 const formatAmount = (amount: string | number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: PRODUCT.currency }).format(Number(amount));
 const sendEmail = async (to: string | string[], subject: string, html: string, text?: string) => {
-  const result = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${requiredEnv("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM?.trim() || "RoboCraft <onboarding@resend.dev>", reply_to: process.env.EMAIL_REPLY_TO || "support@robocraft.com", to: Array.isArray(to) ? to : [to], subject, html, text }),
-  });
-  if (!result.ok) throw new Error(`Email delivery failed (${result.status}): ${(await result.text()).slice(0, 200)}`);
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY is not configured; skipping email delivery to", to);
+    return;
+  }
+  try {
+    const result = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM?.trim() || "RoboCraft <onboarding@resend.dev>",
+        reply_to: process.env.EMAIL_REPLY_TO || "support@robocraft.com",
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+        text,
+      }),
+    });
+    if (!result.ok) {
+      const errorText = await result.text().catch(() => "");
+      console.error(`Email delivery failed (${result.status}): ${errorText.slice(0, 200)}`);
+    }
+  } catch (emailErr) {
+    console.error("Email send network/delivery error:", emailErr);
+  }
 };
 
 const serializePreorder = (row: PreorderRow) => ({
@@ -101,7 +165,7 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
   if (!parsed.success) return response.status(400).json({ error: "Please check the submitted details", issues: parsed.error.flatten() });
   const user = (request as AuthenticatedRequest).user; const input = parsed.data; const sql = getSql();
   await expireOverduePreorders();
-  const existing = await sql`SELECT * FROM preorders WHERE user_id = ${user.id} AND status NOT IN ('expired', 'cancelled') ORDER BY created_at DESC LIMIT 1` as PreorderRow[];
+  const existing = await sql`SELECT * FROM preorders WHERE (user_id = ${user.id} OR user_email = ${user.email}) AND status NOT IN ('expired', 'cancelled') ORDER BY created_at DESC LIMIT 1` as PreorderRow[];
   if (existing[0]) return response.status(200).json({ preorder: serializePreorder(existing[0]), existing: true });
   const quantity = input.quantity ?? 1;
   const productName = input.edition ? `${PRODUCT.name} (${input.edition})` : PRODUCT.name;
@@ -111,17 +175,29 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
     VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
   ` as PreorderRow[];
   const preorder = rows[0];
-  const email = preorderEmail(preorder);
-  await Promise.all([
-    sendEmail(preorder.user_email, `RoboCraft — pre-order received #${preorder.id}`, email.html, email.text),
-    sendEmail(requiredEnv("ADMIN_EMAIL"), `New ${PRODUCT.name} pre-order ${preorder.id}`, `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${PRODUCT.name}.</p><p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`),
-  ]);
+
+  try {
+    const email = preorderEmail(preorder);
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const emailPromises: Promise<unknown>[] = [
+      sendEmail(preorder.user_email, `RoboCraft — pre-order received #${preorder.id}`, email.html, email.text)
+    ];
+    if (adminEmail) {
+      emailPromises.push(
+        sendEmail(adminEmail, `New ${PRODUCT.name} pre-order ${preorder.id}`, `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${PRODUCT.name}.</p><p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`)
+      );
+    }
+    await Promise.allSettled(emailPromises);
+  } catch (emailErr) {
+    console.warn("Failed to send pre-order confirmation email:", emailErr);
+  }
+
   return response.status(201).json({ preorder: serializePreorder(preorder), existing: false });
 }));
 
 app.get("/api/preorders", authenticate, asyncRoute(async (request, response) => {
   await expireOverduePreorders(); const user = (request as AuthenticatedRequest).user;
-  const rows = await getSql()`SELECT * FROM preorders WHERE user_id = ${user.id} ORDER BY created_at DESC` as PreorderRow[];
+  const rows = await getSql()`SELECT * FROM preorders WHERE user_id = ${user.id} OR user_email = ${user.email} ORDER BY created_at DESC` as PreorderRow[];
   response.json({ preorders: rows.map(serializePreorder) });
 }));
 
