@@ -2,6 +2,7 @@
   "name": "xumi",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "packageManager": "npm@12.0.1",
   "workspaces": [
     "apps/*"
@@ -21,7 +22,13 @@
   },
   "dependencies": {
     "@neon/config": "^1.9.4",
-    "@neon/env": "^1.6.5"
+    "@neon/env": "^1.6.5",
+    "@neondatabase/serverless": "^0.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "jose": "^5.9.6",
+    "zod": "^3.25.76"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
