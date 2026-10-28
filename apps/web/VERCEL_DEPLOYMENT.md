@@ -6,7 +6,8 @@ root `vercel.json` keeps `/api/*` on the function and sends other routes to the 
 
 ## 1. Database migration
 
-Run `apps/backend/migrations/001_create_preorders.sql` against
+Run `apps/backend/migrations/001_create_preorders.sql`, followed by
+`apps/backend/migrations/002_preorder_customization.sql`, against
 `DATABASE_URL_UNPOOLED` (the direct Neon connection), then use the pooled
 `DATABASE_URL` for application traffic.
 
@@ -19,8 +20,9 @@ Set these for Production and the preview environments you intend to test:
 - `NEON_AUTH_JWKS_URL`
 - `VITE_NEON_AUTH_URL` — same public Auth base URL, available at build time
 - `WEB_ORIGIN` — production site origin; comma-separate additional allowed origins
-- `RESEND_API_KEY`
-- `EMAIL_FROM` — defaults to `RoboCraft <onboarding@resend.dev>` for testing; use a verified domain for customer delivery
+- `GMAIL_USER` — full Gmail or Google Workspace email address
+- `GMAIL_APP_PASSWORD` — Google App Password for that account
+- `EMAIL_FROM` — optional; defaults to `RoboCraft <GMAIL_USER>`; use the authenticated account or a configured Gmail send-as alias
 - `EMAIL_REPLY_TO` — optional inbox for replies
 - `ADMIN_EMAIL` — inbox notified for every new pre-order
 - `ADMIN_API_KEY` — long random secret used only by the manual admin commands
@@ -66,19 +68,29 @@ The payment request starts the 15-day booking window and emails the order
 details, amount, and payment URL. After payment is manually verified, the last
 command records the payment and sends the confirmation email.
 
-## Check Resend email
+## Check Gmail SMTP email
 
-Set `RESEND_API_KEY` in `apps/backend/.env` for local checks (never commit it).
-Run `npm run email:check --workspace backend` to send to Resend's simulated
-`delivered@resend.dev` recipient. The command exits unsuccessfully for missing
-credentials, API rejection, network failure, or timeout. An accepted email ID
-confirms API submission; check the delivery event in the Resend dashboard.
+Enable 2-Step Verification on the sending Google account and create an
+[App Password](https://support.google.com/mail/answer/185833). Set `GMAIL_USER`
+and `GMAIL_APP_PASSWORD` in `apps/backend/.env` locally and in Vercel for each
+applicable environment. Use the App Password, not your Google account password.
+Remove the previous email provider's API key and replace any old `EMAIL_FROM`.
+Never commit credentials. Changes to Vercel variables need a new deployment.
 
-For an inbox test, run `npm run email:check --workspace backend -- YOUR_RESEND_ACCOUNT_EMAIL`.
-The default `onboarding@resend.dev` sender can send real mail only to the email
-associated with your Resend account. Customer emails require a verified domain
-and an `EMAIL_FROM` address on that domain. See
-https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
+The sender connects to `smtp.gmail.com:465` over TLS. `EMAIL_FROM` defaults to
+`RoboCraft <GMAIL_USER>`; Gmail may rewrite other sender addresses unless they
+are configured aliases. `EMAIL_REPLY_TO` can specify a separate reply inbox.
+See [Nodemailer's Gmail guide](https://nodemailer.com/guides/using-gmail).
 
-Vercel secret values cannot be pulled locally. Set the key locally yourself to
-run the check. Changes to Vercel variables apply to new deployments.
+Run an explicit inbox test:
+
+```bash
+npm run email:check --workspace backend -- recipient@example.com
+```
+
+The command fails for missing credentials, SMTP rejection, connection failures,
+or timeouts. A successful result confirms SMTP acceptance; check the recipient's
+inbox and spam folder to confirm delivery. No email is sent without a recipient.
+
+This configures application order/payment emails. Neon Auth's verification and
+password-reset email SMTP settings are configured separately in Neon Auth.

@@ -6,6 +6,7 @@ import { neon } from "@neondatabase/serverless";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import { sendEmail } from "./email.js";
+import { createPreorderSchema } from "./preorderSchema.js";
 import { preorderEmail } from "./orderEmail.js";
 
 const DEFAULT_DATABASE_URL =
@@ -36,22 +37,11 @@ const getAuthBaseUrl = () => {
 
 const PRODUCT = { id: "xumi", name: "XUMI", unitPrice: 3999, currency: "INR" } as const;
 
-const createPreorderSchema = z.object({
-  customerName: z.string().trim().min(2).max(80),
-  phone: z.string().trim().min(5).max(30),
-  quantity: z.coerce.number().int().min(1).max(10).optional().default(1),
-  edition: z.string().trim().max(50).optional(),
-  address: z.object({
-    line1: z.string().trim().min(2).max(200),
-    city: z.string().trim().min(1).max(80),
-    state: z.string().trim().min(1).max(80),
-    pincode: z.string().trim().min(2).max(20),
-  }),
-});
 const requestPaymentSchema = z.object({ paymentUrl: z.string().url().optional() });
 
 type AuthenticatedRequest = Request & { user: { id: string; email: string; name?: string } };
 type PreorderRow = {
+  edition: string; customization: string | null;
   id: string; user_id: string; user_email: string; customer_name: string; phone: string;
   address_line1: string; city: string; state: string; pincode: string; product_id: string;
   product_name: string; quantity: number; unit_price: string; total_amount: string; currency: string;
@@ -145,6 +135,7 @@ const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (c) => ({ "&": "
 const formatAmount = (amount: string | number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: PRODUCT.currency }).format(Number(amount));
 
 const serializePreorder = (row: PreorderRow) => ({
+  edition: row.edition, customization: row.customization,
   id: row.id, productId: row.product_id, productName: row.product_name, price: Number(row.unit_price),
   quantity: row.quantity, totalAmount: Number(row.total_amount), currency: row.currency,
   customerName: row.customer_name, email: row.user_email, phone: row.phone,
@@ -167,28 +158,31 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
   const productName = input.edition ? `${PRODUCT.name} (${input.edition})` : PRODUCT.name;
   const totalAmount = PRODUCT.unitPrice * quantity;
   const rows = await sql`
-    INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, quantity, unit_price, total_amount, currency, status, booking_expires_at)
-    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
+    INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, edition, customization, quantity, unit_price, total_amount, currency, status, booking_expires_at)
+    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${input.edition}, ${input.customization}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
   ` as PreorderRow[];
   const preorder = rows[0];
 
+  let confirmationEmailStatus: "accepted" | "failed" = "failed";
   try {
     const email = preorderEmail(preorder);
     const adminEmail = process.env.ADMIN_EMAIL?.trim();
-    const emailPromises: Promise<unknown>[] = [
+    const emailPromises = [
       sendEmail(preorder.user_email, `RoboCraft — pre-order received #${preorder.id}`, email.html, email.text)
     ];
     if (adminEmail) {
       emailPromises.push(
-        sendEmail(adminEmail, `New ${PRODUCT.name} pre-order ${preorder.id}`, `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${PRODUCT.name}.</p><p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`)
+        sendEmail(adminEmail, `New ${PRODUCT.name} pre-order ${preorder.id}`, `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${escapeHtml(preorder.product_name)}.</p>${preorder.customization ? `<p>Customization: ${escapeHtml(preorder.customization)}</p>` : ""}<p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`)
       );
     }
-    await Promise.allSettled(emailPromises);
+    const [customerEmail] = await Promise.allSettled(emailPromises);
+    confirmationEmailStatus = customerEmail.status === "fulfilled" && customerEmail.value.ok ? "accepted" : "failed";
+    if (confirmationEmailStatus === "failed") console.error(`Pre-order ${preorder.id}: confirmation email submission failed`);
   } catch (emailErr) {
     console.warn("Failed to send pre-order confirmation email:", emailErr);
   }
 
-  return response.status(201).json({ preorder: serializePreorder(preorder), existing: false });
+  return response.status(201).json({ preorder: serializePreorder(preorder), existing: false, confirmationEmailStatus });
 }));
 
 app.get("/api/preorders", authenticate, asyncRoute(async (request, response) => {
@@ -216,7 +210,7 @@ app.post("/api/admin/preorders/:id/request-payment", authenticateAdmin, asyncRou
 app.post("/api/admin/preorders/:id/confirm-payment", authenticateAdmin, asyncRoute(async (request, response) => {
   const rows = await getSql()`UPDATE preorders SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = ${request.params.id} AND status = 'payment_pending' AND booking_expires_at > NOW() RETURNING *` as PreorderRow[];
   const preorder = rows[0]; if (!preorder) return response.status(409).json({ error: "Order cannot be confirmed in its current state" });
-  await sendEmail(preorder.user_email, `Payment confirmed for ${PRODUCT.name} order ${preorder.id}`, `<h1>Booking confirmed</h1><p>Hi ${escapeHtml(preorder.customer_name)},</p><p>We verified your payment of <strong>${formatAmount(preorder.total_amount)}</strong> for ${PRODUCT.name}. Your order <strong>${escapeHtml(preorder.id)}</strong> is confirmed.</p><p>We will send shipping updates to this email address.</p>`);
+  await sendEmail(preorder.user_email, `Payment confirmed for ${PRODUCT.name} order ${preorder.id}`, `<h1>Booking confirmed</h1><p>Hi ${escapeHtml(preorder.customer_name)},</p><p>We verified your payment of <strong>${formatAmount(preorder.total_amount)}</strong> for ${PRODUCT.name}. Your order <strong>${escapeHtml(preorder.id)}</strong> is confirmed.</p><p>Shipping may take 6–10 days once your pre-order is confirmed. We will send tracking details to this email address.</p>`);
   response.json({ preorder: serializePreorder(preorder) });
 }));
 

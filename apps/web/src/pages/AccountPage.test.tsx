@@ -98,6 +98,13 @@ describe("AccountPage", () => {
     expect(screen.getAllByText(/alex@example\.com/).length).toBeGreaterThan(0);
   });
 
+  it("shows the saved customization instructions", async () => {
+    preorderApi.getPreorders.mockResolvedValue([{ ...preorder, productName: "XUMI (Customized)", edition: "Customized", customization: "Blue shell with white eyes" }]);
+    renderPage();
+    expect(await screen.findByText("Customization instructions")).toBeInTheDocument();
+    expect(screen.getByText("Blue shell with white eyes")).toBeInTheDocument();
+  });
+
   it("shows a confirmed status once payment is verified", async () => {
     preorderApi.getPreorders.mockResolvedValue([{ ...preorder, status: "paid", paidAt: "2026-10-27T00:00:00.000Z" }]);
     renderPage();

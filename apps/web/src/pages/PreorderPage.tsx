@@ -30,6 +30,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { createPreorder, getActivePreorder, getPreorders, type Preorder } from "@/lib/preorders";
@@ -39,9 +40,8 @@ import { XUMI, XUMI_IMAGE } from "@/data/productCatalog";
 import GoogleIcon from "@/components/GoogleIcon";
 
 const PRODUCT_EDITIONS = [
-  { id: "Classic Matte White", label: "Classic Matte White", badge: "Most Popular", color: "bg-stone-100 border-stone-300" },
-  { id: "Midnight Obsidian", label: "Midnight Obsidian", badge: "Stealth", color: "bg-zinc-900 border-zinc-700 text-white" },
-  { id: "Cyber Slate", label: "Cyber Slate", badge: "Limited", color: "bg-slate-700 border-slate-500 text-white" },
+  { id: "Default", label: "Default", badge: "Original XUMI design" },
+  { id: "Customized", label: "Customized", badge: "Tell us your ideas" },
 ] as const;
 
 const preorderSchema = z.object({
@@ -51,7 +51,8 @@ const preorderSchema = z.object({
     .trim()
     .min(1, "Phone number is required")
     .regex(/^[+]?[\d\s-]{10,15}$/, "Please enter a valid phone number"),
-  edition: z.string().min(1, "Please choose an edition").default("Classic Matte White"),
+  edition: z.enum(["Default", "Customized"]).default("Default"),
+  customization: z.string().trim().max(2000, "Please keep your description under 2,000 characters").default(""),
   quantity: z.number().int().min(1, "Quantity must be at least 1").max(5, "Maximum 5 units per pre-order").default(1),
   line1: z.string().trim().min(5, "Address is required").max(200, "That address is too long"),
   city: z.string().trim().min(2, "City is required").max(80, "That city name is too long"),
@@ -60,6 +61,10 @@ const preorderSchema = z.object({
     .string()
     .trim()
     .regex(/^[A-Za-z0-9\s-]{3,10}$/, "Please enter a valid PIN code"),
+}).superRefine((data, ctx) => {
+  if (data.edition === "Customized" && !data.customization) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["customization"], message: "Please describe how you want your XUMI customized" });
+  }
 });
 
 type PreorderFormData = z.infer<typeof preorderSchema>;
@@ -111,7 +116,8 @@ const PreorderPage = () => {
     defaultValues: {
       customerName: "",
       phone: "",
-      edition: "Classic Matte White",
+      edition: "Default",
+      customization: "",
       quantity: 1,
       line1: "",
       city: "",
@@ -148,7 +154,7 @@ const PreorderPage = () => {
   }, [user, form]);
 
   const selectedQuantity = form.watch("quantity") || 1;
-  const selectedEdition = form.watch("edition") || "Classic Matte White";
+  const selectedEdition = form.watch("edition") || "Default";
 
   const totalAmount = XUMI.price * selectedQuantity;
   const totalMrp = XUMI.originalPrice * selectedQuantity;
@@ -178,12 +184,13 @@ const PreorderPage = () => {
         // ignore localStorage access issues in private browsing
       }
 
-      await createPreorder(
+      const preorder = await createPreorder(
         {
           customerName: data.customerName,
           phone: data.phone,
           quantity: data.quantity,
           edition: data.edition,
+          customization: data.edition === "Customized" ? data.customization : undefined,
           address: {
             line1: data.line1,
             city: data.city,
@@ -194,7 +201,9 @@ const PreorderPage = () => {
         activeToken,
       );
       toast.success("Pre-order placed!", {
-        description: "We emailed you a confirmation receipt. Payment details follow after review.",
+        description: preorder.confirmationEmailStatus === "failed"
+          ? "Your order is saved, but we couldn’t send the confirmation email. You can view your order in My order."
+          : "Your order is saved. Payment details follow after review; you can view your confirmation in My order.",
       });
       navigate("/account");
     } catch (error) {
@@ -433,8 +442,8 @@ const PreorderPage = () => {
                           name="edition"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Choose Finish / Edition</FormLabel>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                              <FormLabel>Choose Variant</FormLabel>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                                 {PRODUCT_EDITIONS.map((edition) => {
                                   const isSelected = field.value === edition.id;
                                   return (
@@ -442,6 +451,7 @@ const PreorderPage = () => {
                                       type="button"
                                       key={edition.id}
                                       onClick={() => field.onChange(edition.id)}
+                                      aria-pressed={isSelected}
                                       className={`relative flex flex-col justify-between rounded-xl border p-3 text-left transition-all ${
                                         isSelected
                                           ? "border-accent bg-accent/5 ring-2 ring-accent/30"
@@ -463,6 +473,22 @@ const PreorderPage = () => {
                             </FormItem>
                           )}
                         />
+
+                        {selectedEdition === "Customized" && (
+                          <FormField
+                            control={form.control}
+                            name="customization"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>How would you like your XUMI customized?</FormLabel>
+                                <FormControl>
+                                  <Textarea {...field} rows={4} maxLength={2000} placeholder="Describe your preferred colors, design, or other customization ideas." />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
 
                         <FormField
                           control={form.control}

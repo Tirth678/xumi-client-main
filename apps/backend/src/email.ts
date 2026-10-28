@@ -1,4 +1,4 @@
-export const DEFAULT_EMAIL_FROM = "RoboCraft <onboarding@resend.dev>";
+import nodemailer from "nodemailer";
 
 export type EmailResult =
   | { ok: true; id: string }
@@ -7,33 +7,37 @@ export type EmailResult =
 export async function sendEmail(
   to: string | string[], subject: string, html: string, text?: string,
 ): Promise<EmailResult> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    const error = "RESEND_API_KEY is not configured";
+  const user = process.env.GMAIL_USER?.trim();
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
+  if (!user || !pass) {
+    const error = "GMAIL_USER and GMAIL_APP_PASSWORD must be configured";
     console.error(error);
     return { ok: false, error };
   }
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      signal: AbortSignal.timeout(15_000),
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM?.trim() || DEFAULT_EMAIL_FROM,
-        reply_to: process.env.EMAIL_REPLY_TO?.trim() || undefined,
-        to: Array.isArray(to) ? to : [to], subject, html, text,
-      }),
+    const transport = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user, pass },
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 15_000,
     });
-    const body = await response.json() as { id?: string; message?: string };
-    if (!response.ok || !body.id) {
-      const error = body.message || "Resend did not return an email ID";
-      console.error(`Email submission failed (${response.status}): ${error}`);
-      return { ok: false, error, status: response.status };
+    const result = await transport.sendMail({
+      from: process.env.EMAIL_FROM?.trim() || { name: "RoboCraft", address: user },
+      replyTo: process.env.EMAIL_REPLY_TO?.trim() || undefined,
+      to, subject, html, text,
+    });
+    if (!result.messageId || !result.accepted?.length || result.rejected?.length) {
+      const error = "Gmail SMTP did not accept all recipients";
+      console.error(error);
+      return { ok: false, error };
     }
-    console.info(`Email accepted by Resend: ${body.id}`);
-    return { ok: true, id: body.id };
+    console.info(`Email accepted by Gmail SMTP: ${result.messageId}`);
+    return { ok: true, id: result.messageId };
   } catch {
-    const error = "Resend request failed or timed out";
+    const error = "Gmail SMTP submission failed; check credentials, recipients, and connectivity";
     console.error(error);
     return { ok: false, error };
   }

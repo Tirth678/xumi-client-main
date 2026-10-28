@@ -3,6 +3,8 @@ import { refreshAccessToken } from "@/lib/neonAuth";
 export type PreorderStatus = "received" | "payment_pending" | "paid" | "expired" | "cancelled";
 export interface PreorderAddress { line1: string; city: string; state: string; pincode: string }
 export interface Preorder {
+  edition?: string; customization?: string | null;
+  confirmationEmailStatus?: "accepted" | "failed";
   id: string; productId: string; productName: string; price: number; quantity: number;
   totalAmount: number; currency: string; customerName: string; email: string; phone: string;
   address: PreorderAddress; status: PreorderStatus; paymentUrl: string | null;
@@ -12,7 +14,8 @@ export interface PreorderInput {
   customerName: string;
   phone: string;
   quantity?: number;
-  edition?: string;
+  edition?: "Default" | "Customized";
+  customization?: string;
   address: PreorderAddress;
 }
 
@@ -43,5 +46,8 @@ export const getActivePreorder = (preorders: Preorder[]) =>
   preorders.find((preorder) => !["expired", "cancelled"].includes(preorder.status)) ?? preorders[0] ?? null;
 export const createPreorder = async (input: PreorderInput, token: string): Promise<Preorder> => {
   const response = await authorizedFetch("/api/preorders", token, { method: "POST", body: JSON.stringify(input) });
-  return (await parseResponse<{ preorder: Preorder }>(response)).preorder;
+  const result = await parseResponse<{ preorder: Preorder; confirmationEmailStatus?: "accepted" | "failed" }>(response);
+  return result.confirmationEmailStatus
+    ? { ...result.preorder, confirmationEmailStatus: result.confirmationEmailStatus }
+    : result.preorder;
 };

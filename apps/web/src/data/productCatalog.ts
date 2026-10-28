@@ -19,7 +19,7 @@ export const XUMI = {
   originalPrice: 4999,
   currency: "₹",
   shipping: "Free shipping across India",
-  shippingNote: "Ships in 2-4 business days once your pre-order is confirmed",
+  shippingNote: "Shipping may take 6–10 days once your pre-order is confirmed",
 } as const;
 
 export const XUMI_FEATURES = [

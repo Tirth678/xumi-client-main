@@ -5,7 +5,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   test: {
-    server: { deps: { inline: ["motion", "framer-motion", "motion-dom", "motion-utils"] } },
+    server: { deps: { inline: ["motion", "framer-motion", "motion-dom", "motion-utils", "react-hook-form", /@radix-ui\//] } },
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

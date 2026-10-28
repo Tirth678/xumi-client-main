@@ -151,6 +151,13 @@ const AccountPage = () => {
           <p className="font-display font-bold">{XUMI_PRICE_LABEL}</p>
         </div>
 
+        {preorder.customization && (
+          <div className="mt-4 rounded-xl border border-border p-4 font-body text-sm">
+            <p className="font-semibold">Customization instructions</p>
+            <p className="mt-2 whitespace-pre-wrap break-words">{preorder.customization}</p>
+          </div>
+        )}
+
         <div className="mt-6 rounded-xl bg-secondary/60 p-4 font-body text-sm">
           {preorder.status === "paid" ? (
             <p className="text-foreground">

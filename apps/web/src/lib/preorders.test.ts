@@ -18,6 +18,14 @@ describe("preorder API", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/preorders", expect.objectContaining({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer jwt" }) }));
   });
 
+  it("preserves customization and reports rejected confirmation emails", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ preorder, confirmationEmailStatus: "failed" }), { status: 201 }));
+    const input = { customerName: preorder.customerName, phone: preorder.phone, address: preorder.address, edition: "Customized" as const, customization: "Blue shell" };
+    const result = await createPreorder(input, "jwt");
+    expect(result.confirmationEmailStatus).toBe("failed");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ edition: "Customized", customization: "Blue shell" });
+  });
+
   it("loads preorders from the backend", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ preorders: [preorder] }), { status: 200, headers: { "Content-Type": "application/json" } }));
     await expect(getPreorders("jwt")).resolves.toEqual([preorder]);
