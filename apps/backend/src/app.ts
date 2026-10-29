@@ -9,22 +9,20 @@ import { sendEmail } from "./email.js";
 import { createPreorderSchema } from "./preorderSchema.js";
 import { preorderEmail } from "./orderEmail.js";
 
-const DEFAULT_DATABASE_URL =
-  "postgresql://neondb_owner:npg_D4Tc3xyNqSeJ@ep-summer-waterfall-b4q4jv2b-pooler.c-6.us-east-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require";
-
 const DEFAULT_AUTH_BASE_URL =
   "https://ep-summer-waterfall-b4q4jv2b.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
 
 const getDatabaseUrl = () => {
-  return (
+  const url = (
     process.env.DATABASE_URL?.trim() ||
     process.env.POSTGRES_URL?.trim() ||
     process.env.DATABASE_URL_UNPOOLED?.trim() ||
     process.env.POSTGRES_URL_NON_POOLING?.trim() ||
     process.env.POSTGRES_PRISMA_URL?.trim() ||
-    process.env.NEON_DATABASE_URL?.trim() ||
-    DEFAULT_DATABASE_URL
+    process.env.NEON_DATABASE_URL?.trim()
   );
+  if (!url) throw new Error("DATABASE_URL is not configured");
+  return url;
 };
 
 const getAuthBaseUrl = () => {
