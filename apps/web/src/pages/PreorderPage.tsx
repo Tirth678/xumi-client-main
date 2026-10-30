@@ -35,7 +35,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { createPreorder, getActivePreorder, getPreorders, type Preorder } from "@/lib/preorders";
 import { getSafeErrorMessage } from "@/lib/apiErrors";
-import { loginWithGoogle, refreshAccessToken } from "@/lib/neonAuth";
+import { refreshAccessToken } from "@/lib/neonAuth";
+import { startGoogleSignIn } from "@/lib/googleSignIn";
 import { XUMI, XUMI_IMAGE } from "@/data/productCatalog";
 import GoogleIcon from "@/components/GoogleIcon";
 
@@ -221,16 +222,8 @@ const PreorderPage = () => {
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
-    try {
-      const result = await loginWithGoogle("/preorder");
-      if (!result.success) {
-        toast.error(getSafeErrorMessage(new Error(result.error ?? ""), "Google sign-in failed."));
-      }
-    } catch (error) {
-      toast.error(getSafeErrorMessage(error, "Google sign-in failed."));
-    } finally {
-      setSigningIn(false);
-    }
+    await startGoogleSignIn("/preorder");
+    setSigningIn(false);
   };
 
   const summary = (

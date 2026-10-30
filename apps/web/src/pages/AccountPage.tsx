@@ -8,15 +8,9 @@ import FooterSection from "@/components/FooterSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { getActivePreorder, getPreorders, type Preorder } from "@/lib/preorders";
 import { getSafeErrorMessage } from "@/lib/apiErrors";
-import { loginWithGoogle } from "@/lib/neonAuth";
+import { startGoogleSignIn } from "@/lib/googleSignIn";
 import { XUMI_IMAGE, XUMI_PRICE_LABEL } from "@/data/productCatalog";
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+import { formatDate } from "@/lib/formatDate";
 
 const StatusBadge = ({ status }: { status: Preorder["status"] }) =>
   status === "paid" ? (
@@ -51,16 +45,8 @@ const AccountPage = () => {
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
-    try {
-      const result = await loginWithGoogle("/account");
-      if (!result.success) {
-        toast.error(getSafeErrorMessage(new Error(result.error ?? ""), "Google sign-in failed."));
-      }
-    } catch (error) {
-      toast.error(getSafeErrorMessage(error, "Google sign-in failed."));
-    } finally {
-      setSigningIn(false);
-    }
+    await startGoogleSignIn("/account");
+    setSigningIn(false);
   };
 
   const shell = (children: React.ReactNode) => (
