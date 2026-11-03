@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#141414" />
     <title>XUMI - Your personal tiny desk partner | RoboCraft</title>
     <meta name="description" content="XUMI is your personal tiny desk partner from RoboCraft: 40+ expressions, five moods, focus mode, a clock and little games. Pre-orders are open now." />
     <meta name="author" content="RoboCraft" />
@@ -11,15 +13,41 @@
     <meta property="og:title" content="XUMI - Your personal tiny desk partner" />
     <meta property="og:description" content="Meet XUMI, the tiny desk partner from RoboCraft. Pre-orders are open — reserve yours today, no payment until it ships." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/xumi-hero.png" />
+    <meta property="og:image" content="/xumi-hero.jpg" />
+    <meta property="og:image:width" content="1672" />
+    <meta property="og:image:height" content="941" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@RoboCraft" />
-    <meta name="twitter:image" content="/xumi-hero.png" />
+    <meta name="twitter:image" content="/xumi-hero.jpg" />
+
+    <!-- LCP hero: start the fetch before the JS bundle loads -->
+    <link
+      rel="preload"
+      as="image"
+      href="/xumi-hero.jpg"
+      imagesrcset="/xumi-hero-960.jpg 960w, /xumi-hero.jpg 1672w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+
+    <!-- Fonts: preconnect + stylesheet link loads in parallel with the app CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    />
   </head>
 
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: sans-serif; padding: 2rem; text-align: center">
+        XUMI by RoboCraft — your personal tiny desk partner. This site needs JavaScript to run.
+        Email <a href="mailto:support@robocraft.com">support@robocraft.com</a> to pre-order without a browser.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

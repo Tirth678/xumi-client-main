@@ -19,7 +19,11 @@ Set these for Production and the preview environments you intend to test:
 - `NEON_AUTH_BASE_URL`
 - `NEON_AUTH_JWKS_URL`
 - `VITE_NEON_AUTH_URL` — same public Auth base URL, available at build time
-- `WEB_ORIGIN` — production site origin; comma-separate additional allowed origins
+- `WEB_ORIGIN` — production site origin; comma-separate additional allowed origins.
+  Cross-origin browser calls are rejected unless the origin is listed here, matches this
+  deployment's own Vercel URLs (automatic), or is localhost in non-production.
+- `SITE_URL` — optional; public origin used to make `og:image`/`twitter:image` absolute at
+  build time. Defaults to `https://$VERCEL_PROJECT_PRODUCTION_URL` on Vercel.
 - `GMAIL_USER` — full Gmail or Google Workspace email address
 - `GMAIL_APP_PASSWORD` — Google App Password for that account
 - `EMAIL_FROM` — optional; defaults to `RoboCraft <GMAIL_USER>`; use the authenticated account or a configured Gmail send-as alias
@@ -46,6 +50,20 @@ Import the repository in Vercel and keep **Root Directory** at the repository
 root. Vercel uses the committed `vercel.json`; no separate backend project is
 required. Deploy a Preview first and verify `/api/health`, sign-up, both sign-in
 methods, pre-order creation, all three emails, and the manual payment flow.
+
+The committed `vercel.json` also configures production basics:
+
+- `api/index.ts` runs with `maxDuration: 60` so SMTP email sends (15s timeouts each)
+  cannot hit the default function timeout on the Hobby plan.
+- Hashed files under `/assets/` are cached `immutable` for one year.
+- All responses carry `X-Content-Type-Options`, `X-Frame-Options: DENY`,
+  `Referrer-Policy`, `Permissions-Policy`, and HSTS headers.
+- The API itself adds per-IP rate limits (120 req/min overall, 30/min admin,
+  10/min pre-order writes), rejects malformed JSON with 400, oversized bodies
+  with 413, and marks every API response `Cache-Control: no-store`.
+
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests, and the same build
+command Vercel uses on every push to `main` and every pull request.
 
 ## Manual review and payment confirmation
 

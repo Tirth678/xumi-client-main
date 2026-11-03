@@ -8,6 +8,7 @@ import { z } from "zod";
 import { sendEmail } from "./email.js";
 import { createPreorderSchema } from "./preorderSchema.js";
 import { preorderEmail } from "./orderEmail.js";
+import { createRateLimiter } from "./rateLimit.js";
 
 const DEFAULT_AUTH_BASE_URL =
   "https://ep-summer-waterfall-b4q4jv2b.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
@@ -66,31 +67,62 @@ const getJwks = () => {
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const envOrigins = (process.env.WEB_ORIGIN ?? "").split(",").map((v) => v.trim()).filter(Boolean);
-    if (envOrigins.includes("*") || envOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+
+/**
+ * Origins allowed to call the API from a browser. Same-origin requests (the
+ * normal case on Vercel) send no Origin header and always pass. Cross-origin
+ * access must be explicitly configured via WEB_ORIGIN, match this
+ * deployment's own Vercel URLs (auto-provided system env vars, so preview
+ * deployments keep working), or come from localhost outside production.
+ */
+const isOriginAllowed = (origin: string): boolean => {
+  const envOrigins = (process.env.WEB_ORIGIN ?? "").split(",").map((v) => v.trim().replace(/\/$/, "")).filter(Boolean);
+  if (envOrigins.includes("*") || envOrigins.includes(origin.replace(/\/$/, ""))) return true;
+
+  const deploymentHosts = [
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_BRANCH_URL,
+    process.env.VERCEL_URL,
+  ].filter(Boolean).map((host) => `https://${host}`);
+  if (deploymentHosts.includes(origin)) return true;
+
+  if (process.env.NODE_ENV !== "production") {
     try {
       const parsed = new URL(origin);
-      if (
-        parsed.hostname.endsWith(".vercel.app") ||
-        parsed.hostname === "localhost" ||
-        parsed.hostname === "127.0.0.1"
-      ) {
-        return callback(null, true);
-      }
+      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") return true;
     } catch {}
-    if (envOrigins.length === 0) {
-      return callback(null, true);
-    }
-    return callback(null, false);
-  },
+  }
+  return false;
+};
+
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || isOriginAllowed(origin)),
   credentials: true,
 }));
+
+// API responses carry personal data — never let shared caches store them.
+app.use((_request, response, next) => {
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.setHeader("Cache-Control", "no-store");
+  next();
+});
+
 app.use(express.json({ limit: "32kb" }));
+
+// Throttle bursts per client IP. Admin routes get a tighter budget so the
+// ADMIN_API_KEY cannot be brute-forced; writes get a moderate one.
+app.use("/api", createRateLimiter({ windowMs: 60_000, max: 120 }));
+const adminLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 30,
+  message: "Too many admin requests. Please wait a minute and try again.",
+});
+const writeLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 10,
+  message: "Too many attempts. Please wait a minute and try again.",
+});
 
 const asyncRoute = (handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => { Promise.resolve(handler(req, res, next)).catch(next); };
@@ -145,7 +177,7 @@ const expireOverduePreorders = async () => { await getSql()`UPDATE preorders SET
 
 app.get("/api/health", (_request, response) => response.json({ status: "ok" }));
 
-app.post("/api/preorders", authenticate, asyncRoute(async (request, response) => {
+app.post("/api/preorders", writeLimiter, authenticate, asyncRoute(async (request, response) => {
   const parsed = createPreorderSchema.safeParse(request.body);
   if (!parsed.success) return response.status(400).json({ error: "Please check the submitted details", issues: parsed.error.flatten() });
   const user = (request as AuthenticatedRequest).user; const input = parsed.data; const sql = getSql();
@@ -189,12 +221,12 @@ app.get("/api/preorders", authenticate, asyncRoute(async (request, response) => 
   response.json({ preorders: rows.map(serializePreorder) });
 }));
 
-app.get("/api/admin/preorders", authenticateAdmin, asyncRoute(async (_request, response) => {
+app.get("/api/admin/preorders", adminLimiter, authenticateAdmin, asyncRoute(async (_request, response) => {
   await expireOverduePreorders(); const rows = await getSql()`SELECT * FROM preorders ORDER BY created_at DESC LIMIT 500` as PreorderRow[];
   response.json({ preorders: rows.map(serializePreorder) });
 }));
 
-app.post("/api/admin/preorders/:id/request-payment", authenticateAdmin, asyncRoute(async (request, response) => {
+app.post("/api/admin/preorders/:id/request-payment", adminLimiter, authenticateAdmin, asyncRoute(async (request, response) => {
   const parsed = requestPaymentSchema.safeParse(request.body ?? {});
   if (!parsed.success) return response.status(400).json({ error: "paymentUrl must be a valid URL" });
   const paymentUrl = parsed.data.paymentUrl ?? process.env.PAYMENT_URL?.trim();
@@ -205,7 +237,7 @@ app.post("/api/admin/preorders/:id/request-payment", authenticateAdmin, asyncRou
   response.json({ preorder: serializePreorder(preorder) });
 }));
 
-app.post("/api/admin/preorders/:id/confirm-payment", authenticateAdmin, asyncRoute(async (request, response) => {
+app.post("/api/admin/preorders/:id/confirm-payment", adminLimiter, authenticateAdmin, asyncRoute(async (request, response) => {
   const rows = await getSql()`UPDATE preorders SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = ${request.params.id} AND status = 'payment_pending' AND booking_expires_at > NOW() RETURNING *` as PreorderRow[];
   const preorder = rows[0]; if (!preorder) return response.status(409).json({ error: "Order cannot be confirmed in its current state" });
   await sendEmail(preorder.user_email, `Payment confirmed for ${PRODUCT.name} order ${preorder.id}`, `<h1>Booking confirmed</h1><p>Hi ${escapeHtml(preorder.customer_name)},</p><p>We verified your payment of <strong>${formatAmount(preorder.total_amount)}</strong> for ${PRODUCT.name}. Your order <strong>${escapeHtml(preorder.id)}</strong> is confirmed.</p><p>Shipping may take 6–10 days once your pre-order is confirmed. We will send tracking details to this email address.</p>`);
@@ -214,6 +246,11 @@ app.post("/api/admin/preorders/:id/confirm-payment", authenticateAdmin, asyncRou
 
 app.use((_request, response) => response.status(404).json({ error: "Not found" }));
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+  // Malformed or oversized JSON is a client error, not a server fault.
+  const type = (error as { type?: string } | null)?.type;
+  if (type === "entity.parse.failed") return response.status(400).json({ error: "Request body must be valid JSON" });
+  if (type === "entity.too.large") return response.status(413).json({ error: "Request body is too large" });
+
   console.error(error); const message = error instanceof Error ? error.message : "Unknown error";
   response.status(/is not configured/.test(message) ? 503 : 500).json({ error: /is not configured/.test(message) ? "Service configuration is incomplete" : "An unexpected error occurred" });
 });

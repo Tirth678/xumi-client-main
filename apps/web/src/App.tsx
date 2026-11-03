@@ -9,6 +9,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PageTransition from "@/components/PageTransition";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const Index = lazy(() => import("./pages/Index"));
 const PreorderPage = lazy(() => import("./pages/PreorderPage"));
@@ -48,16 +50,19 @@ const AnimatedRoutes = () => {
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="xumi-theme">
   <TooltipProvider>
-    <AuthProvider>
-      <Toaster />
-      <Sonner />
-      <ThemeToggle />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<RouteFallback />}>
-          <AnimatedRoutes />
-        </Suspense>
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <ThemeToggle />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ScrollToTop />
+          <Suspense fallback={<RouteFallback />}>
+            <AnimatedRoutes />
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   </TooltipProvider>
   </ThemeProvider>
 );
