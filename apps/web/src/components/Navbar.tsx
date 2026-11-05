@@ -14,6 +14,7 @@ const navLinks = [
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, logout } = useAuth();
@@ -36,6 +37,15 @@ const Navbar = () => {
       window.removeEventListener("scroll", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.matchMedia("(max-width: 767px)").matches);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -114,16 +124,25 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/")}
-              className={`font-display text-xl md:text-2xl font-black tracking-tight transition-colors flex items-center gap-2 ${
+              className={`font-display text-xl md:text-2xl font-black tracking-tight transition-colors flex items-center gap-2 relative ${
                 shouldShowSolid ? "text-foreground" : "text-white"
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
               aria-label="Go to RoboCraft home"
             >
-              <img
-                src="/logo.png"
-                alt="RoboCraft logo"
-                className="h-12 w-auto md:h-full max-h-[6rem] object-contain"
-              />
+              <div className="relative h-12 w-auto md:h-full max-h-[6rem]">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={isMobile || scrolled ? "black" : "white"}
+                    src={isMobile || scrolled ? "/logo-black.png" : "/logo.png"}
+                    alt="RoboCraft logo"
+                    className="h-full w-auto object-contain absolute"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </AnimatePresence>
+              </div>
             </button>
             <span
               className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${
