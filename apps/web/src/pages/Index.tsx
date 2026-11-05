@@ -18,6 +18,16 @@ const Index = () => {
     }
   }, []);
 
+  // On mobile, skip the hero and jump straight to the Meet XUMI section
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile) return;
+    const product = document.getElementById("product");
+    if (product) {
+      product.scrollIntoView({ behavior: "instant" });
+    }
+  }, []);
+
   return (
     <div className="min-h-screen scroll-smooth">
       <Navbar />
