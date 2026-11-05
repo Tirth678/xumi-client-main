@@ -6,6 +6,7 @@ import { neon } from "@neondatabase/serverless";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import { sendEmail } from "./email.js";
+import { sendEmailForClient } from "./clientEmail.js";
 import { createPreorderSchema } from "./preorderSchema.js";
 import { preorderEmail } from "./orderEmail.js";
 
@@ -45,6 +46,7 @@ type PreorderRow = {
   product_name: string; quantity: number; unit_price: string; total_amount: string; currency: string;
   status: "received" | "payment_pending" | "paid" | "expired" | "cancelled";
   payment_url: string | null; booking_expires_at: string | null; paid_at: string | null;
+  client_id: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -156,26 +158,44 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
   const productName = input.edition ? `${PRODUCT.name} (${input.edition})` : PRODUCT.name;
   const totalAmount = PRODUCT.unitPrice * quantity;
   const rows = await sql`
-    INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, edition, customization, quantity, unit_price, total_amount, currency, status, booking_expires_at)
-    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${input.edition}, ${input.customization}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days') RETURNING *
+    INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, edition, customization, quantity, unit_price, total_amount, currency, status, booking_expires_at, client_id)
+    VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${input.edition}, ${input.customization}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days', 'default') RETURNING *
   ` as PreorderRow[];
   const preorder = rows[0];
 
   let confirmationEmailStatus: "accepted" | "failed" = "failed";
   try {
     const email = preorderEmail(preorder);
+    const clientId = preorder.client_id || 'default';
+    
+    // Send email to customer using client's Gmail
+    const customerEmailResult = await sendEmailForClient(
+      sql,
+      clientId,
+      preorder.user_email,
+      `RoboCraft — pre-order received #${preorder.id}`,
+      email.html,
+      email.text
+    );
+    
+    confirmationEmailStatus = customerEmailResult.ok ? "accepted" : "failed";
+    
+    // Send copy to admin if configured
     const adminEmail = process.env.ADMIN_EMAIL?.trim();
-    const emailPromises = [
-      sendEmail(preorder.user_email, `RoboCraft — pre-order received #${preorder.id}`, email.html, email.text)
-    ];
     if (adminEmail) {
-      emailPromises.push(
-        sendEmail(adminEmail, `New ${PRODUCT.name} pre-order ${preorder.id}`, `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${escapeHtml(preorder.product_name)}.</p>${preorder.customization ? `<p>Customization: ${escapeHtml(preorder.customization)}</p>` : ""}<p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`)
+      await sendEmailForClient(
+        sql,
+        clientId,
+        adminEmail,
+        `New ${PRODUCT.name} pre-order ${preorder.id}`,
+        `<h1>New pre-order</h1><p><strong>${escapeHtml(preorder.customer_name)}</strong> (${escapeHtml(preorder.user_email)}) reserved ${escapeHtml(preorder.product_name)}.</p>${preorder.customization ? `<p>Customization: ${escapeHtml(preorder.customization)}</p>` : ""}<p>Order: ${escapeHtml(preorder.id)} · ${formatAmount(preorder.total_amount)}</p>`,
+        `New pre-order ${preorder.id} from ${preorder.customer_name}`
       );
     }
-    const [customerEmail] = await Promise.allSettled(emailPromises);
-    confirmationEmailStatus = customerEmail.status === "fulfilled" && customerEmail.value.ok ? "accepted" : "failed";
-    if (confirmationEmailStatus === "failed") console.error(`Pre-order ${preorder.id}: confirmation email submission failed`);
+    
+    if (confirmationEmailStatus === "failed") {
+      console.error(`Pre-order ${preorder.id}: confirmation email submission failed`);
+    }
   } catch (emailErr) {
     console.warn("Failed to send pre-order confirmation email:", emailErr);
   }

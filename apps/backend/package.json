@@ -10,7 +10,9 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test scripts/*.test.ts",
-    "email:check": "tsx scripts/check-email.ts"
+    "email:check": "tsx scripts/check-email.ts",
+    "email:setup": "tsx scripts/setup-client-email.ts",
+    "email:test": "tsx scripts/test-client-email.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",
