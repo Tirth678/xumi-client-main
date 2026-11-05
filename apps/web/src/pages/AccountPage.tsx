@@ -204,8 +204,8 @@ const AccountPage = () => {
 
       <p className="mt-6 text-center font-body text-sm text-muted-foreground">
         Something wrong? Email{" "}
-        <a href="mailto:support@robocraft.com" className="underline">
-          support@robocraft.com
+        <a href="mailto:parmarjaimin150@gmail.com" className="underline">
+          parmarjaimin150@gmail.com
         </a>
         .
       </p>

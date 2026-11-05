@@ -19,7 +19,7 @@ const columns: DuneHaulColumn[] = [
   },
   {
     title: "Contact",
-    links: [{ label: "support@robocraft.com", href: "mailto:support@robocraft.com" }],
+    links: [{ label: "parmarjaimin150@gmail.com", href: "mailto:parmarjaimin150@gmail.com" }],
   },
 ];
 

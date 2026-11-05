@@ -28,7 +28,7 @@ async function setupDefaultClient() {
   const gmailUser = process.env.GMAIL_USER?.trim();
   const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
   const emailFromName = "RoboCraft";
-  const emailReplyTo = process.env.EMAIL_REPLY_TO?.trim() || "support@robocraft.com";
+  const emailReplyTo = process.env.EMAIL_REPLY_TO?.trim() || "parmarjaimin150@gmail.com";
 
   if (!gmailUser || !gmailPassword) {
     console.error("❌ Error: GMAIL_USER and GMAIL_APP_PASSWORD must be set in .env.local");

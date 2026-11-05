@@ -40,7 +40,7 @@ Open `.env.local` and update these values:
 GMAIL_USER=your-actual-email@gmail.com
 GMAIL_APP_PASSWORD=abcdefghijklmnop  # 16-character app password (no spaces)
 EMAIL_FROM="RoboCraft <your-actual-email@gmail.com>"
-EMAIL_REPLY_TO=support@robocraft.com
+EMAIL_REPLY_TO=parmarjaimin150@gmail.com
 ADMIN_EMAIL=admin@robocraft.com
 ```
 
