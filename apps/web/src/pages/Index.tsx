@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import FeaturesSection from "@/components/FeaturesSection";
@@ -7,6 +7,8 @@ import PreorderStepsSection from "@/components/PreorderStepsSection";
 import FooterSection from "@/components/FooterSection";
 
 const Index = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     document.title = "XUMI - Your personal tiny desk partner | RoboCraft";
     const metaDescription = document.querySelector('meta[name="description"]');
@@ -18,20 +20,19 @@ const Index = () => {
     }
   }, []);
 
-  // On mobile, skip the hero and jump straight to the Meet XUMI section
   useEffect(() => {
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
-    if (!isMobile) return;
-    const product = document.getElementById("product");
-    if (product) {
-      product.scrollIntoView({ behavior: "instant" });
-    }
+    const checkMobile = () => {
+      setIsMobile(window.matchMedia("(max-width: 767px)").matches);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   return (
     <div className="min-h-screen scroll-smooth">
       <Navbar />
-      <HeroSection />
+      {!isMobile && <HeroSection />}
       <ProductSection />
       <FeaturesSection />
       <PreorderStepsSection />
