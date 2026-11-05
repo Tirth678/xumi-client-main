@@ -83,7 +83,7 @@ export default function FooterSection() {
     <DuneHaulFooter
       name=""
       brandHref="/"
-      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-8 w-auto" />}
+      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-16 w-auto" />}
       preset="auto"
       columns={columns}
       socials={[]}
@@ -91,6 +91,7 @@ export default function FooterSection() {
       copyright={
         <span className="flex flex-col gap-1">
           <span>{`© ${new Date().getFullYear()} RoboCraft. All rights reserved. XUMI — your personal tiny desk partner. We aim to reply within 24 hours on weekdays.`}</span>
+          <span className="text-muted-foreground text-sm">Official website coming soon</span>
           <SystemStatus />
         </span>
       }
