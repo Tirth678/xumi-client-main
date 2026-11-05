@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot, Activity } from "lucide-react";
+import { Activity } from "lucide-react";
 import DuneHaulFooter, { type DuneHaulColumn } from "@/components/ui/dune-haul-footer";
 
 const columns: DuneHaulColumn[] = [
@@ -81,9 +81,9 @@ function SystemStatus() {
 export default function FooterSection() {
   return (
     <DuneHaulFooter
-      name="RoboCraft"
+      name=""
       brandHref="/"
-      logo={<Bot className="dhf-mark text-accent" aria-hidden="true" />}
+      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-8 w-auto" />}
       preset="auto"
       columns={columns}
       socials={[]}
