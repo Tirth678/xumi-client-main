@@ -20,7 +20,7 @@ const columns: DuneHaulColumn[] = [
   },
   {
     title: "Contact",
-    links: [{ label: "parmarjaimin150@gmail.com", href: "mailto:parmarjaimin150@gmail.com" }],
+    links: [{ label: "robocraftsolution@gmail.com", href: "mailto:robocraftsolution@gmail.com" }],
   },
 ];
 
@@ -83,7 +83,7 @@ export default function FooterSection() {
     <DuneHaulFooter
       name=""
       brandHref="/"
-      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-16 w-auto" />}
+      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-24 w-auto" />}
       preset="auto"
       columns={columns}
       socials={[]}
