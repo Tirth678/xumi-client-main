@@ -33,7 +33,7 @@ export default function FooterSection() {
       columns={columns}
       socials={[]}
       fontFamily="var(--font-body)"
-      copyright={`© ${new Date().getFullYear()} RoboCraft. All rights reserved. XUMI — your personal tiny desk partner. We aim to reply within 24 hours on weekdays.`}
+      copyright={`© ${new Date().getFullYear()} RoboCraft. All rights reserved. XUMI — your personal tiny desk partner. We aim to reply within 24 hours on weekdays. · 🟢 All systems operational`}
     />
   );
 }

@@ -229,7 +229,7 @@ app.post("/api/admin/preorders/:id/request-payment", authenticateAdmin, asyncRou
 app.post("/api/admin/preorders/:id/confirm-payment", authenticateAdmin, asyncRoute(async (request, response) => {
   const rows = await getSql()`UPDATE preorders SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = ${request.params.id} AND status = 'payment_pending' AND booking_expires_at > NOW() RETURNING *` as PreorderRow[];
   const preorder = rows[0]; if (!preorder) return response.status(409).json({ error: "Order cannot be confirmed in its current state" });
-  await sendEmail(preorder.user_email, `Payment confirmed for ${PRODUCT.name} order ${preorder.id}`, `<h1>Booking confirmed</h1><p>Hi ${escapeHtml(preorder.customer_name)},</p><p>We verified your payment of <strong>${formatAmount(preorder.total_amount)}</strong> for ${PRODUCT.name}. Your order <strong>${escapeHtml(preorder.id)}</strong> is confirmed.</p><p>Shipping may take 6–10 days once your pre-order is confirmed. We will send tracking details to this email address.</p>`);
+  await sendEmail(preorder.user_email, `Order confirmed for ${PRODUCT.name} order ${preorder.id}`, `<h1>Order confirmed</h1><p>Hi ${escapeHtml(preorder.customer_name)},</p><p>We verified your payment of <strong>${formatAmount(preorder.total_amount)}</strong> for ${PRODUCT.name}. Your order <strong>${escapeHtml(preorder.id)}</strong> is confirmed.</p><p>Shipping may take 6–10 days once your pre-order is confirmed. We will send tracking details to this email address.</p>`);
   response.json({ preorder: serializePreorder(preorder) });
 }));
 

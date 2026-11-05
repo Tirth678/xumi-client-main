@@ -15,7 +15,7 @@ import { formatDate } from "@/lib/formatDate";
 const StatusBadge = ({ status }: { status: Preorder["status"] }) =>
   status === "paid" ? (
     <span className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-4 py-1.5 font-body text-xs font-bold uppercase tracking-widest text-accent">
-      <BadgeCheck size={14} /> Payment confirmed
+      <BadgeCheck size={14} /> Order confirmed
     </span>
   ) : (
     <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 font-body text-xs font-bold uppercase tracking-widest text-foreground">

@@ -93,7 +93,7 @@ describe("AccountPage", () => {
     renderPage();
 
     expect(await screen.findByText("Under review")).toBeInTheDocument();
-    expect(screen.queryByText("Payment confirmed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Order confirmed")).not.toBeInTheDocument();
     expect(screen.getByText(/payment link that stays valid for 15 days/i)).toBeInTheDocument();
     expect(screen.getAllByText(/alex@example\.com/).length).toBeGreaterThan(0);
   });
@@ -109,7 +109,7 @@ describe("AccountPage", () => {
     preorderApi.getPreorders.mockResolvedValue([{ ...preorder, status: "paid", paidAt: "2026-10-27T00:00:00.000Z" }]);
     renderPage();
 
-    expect(await screen.findByText("Payment confirmed")).toBeInTheDocument();
+    expect(await screen.findByText("Order confirmed")).toBeInTheDocument();
     expect(screen.queryByText("Under review")).not.toBeInTheDocument();
     expect(screen.getByText(/payment and XUMI booking are confirmed/i)).toBeInTheDocument();
   });
