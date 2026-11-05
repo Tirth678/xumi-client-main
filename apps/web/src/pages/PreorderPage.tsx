@@ -608,6 +608,9 @@ const PreorderPage = () => {
                         <Info size={13} className="text-accent" />
                         No payment required today. We verify allocations before requesting payment.
                       </p>
+                      <p className="mt-1.5 text-center font-body text-xs text-muted-foreground">
+                        After placing your order, check your <span className="font-semibold text-foreground">spam or junk folder</span> if you don't receive the confirmation email.
+                      </p>
                     </div>
                   </form>
                 </Form>
