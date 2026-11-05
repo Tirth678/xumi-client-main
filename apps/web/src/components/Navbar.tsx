@@ -124,25 +124,16 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/")}
-              className={`font-display text-xl md:text-2xl font-black tracking-tight transition-colors flex items-center gap-2 relative ${
+              className={`font-display text-xl md:text-2xl font-black tracking-tight transition-colors flex items-center gap-2 ${
                 shouldShowSolid ? "text-foreground" : "text-white"
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background`}
               aria-label="Go to RoboCraft home"
             >
-              <div className="relative h-12 w-auto md:h-full max-h-[6rem]">
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={isMobile || scrolled ? "black" : "white"}
-                    src={isMobile || scrolled ? "/logo-black.png" : "/logo.png"}
-                    alt="RoboCraft logo"
-                    className="h-full w-auto object-contain absolute"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </AnimatePresence>
-              </div>
+              <img
+                src={isMobile || scrolled ? "/logo-black.png" : "/logo.png"}
+                alt="RoboCraft logo"
+                className="h-12 w-auto md:h-full max-h-[6rem] object-contain transition-opacity duration-300"
+              />
             </button>
             <span
               className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${
