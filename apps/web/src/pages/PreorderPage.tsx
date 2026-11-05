@@ -160,6 +160,7 @@ const PreorderPage = () => {
   const totalAmount = XUMI.price * selectedQuantity;
   const totalMrp = XUMI.originalPrice * selectedQuantity;
   const totalSavings = totalMrp - totalAmount;
+  const totalWithDelivery = totalAmount + XUMI.deliveryCharge;
 
   const handleSubmit = async (data: PreorderFormData) => {
     let activeToken = token;
@@ -204,7 +205,7 @@ const PreorderPage = () => {
       toast.success("Pre-order placed!", {
         description: preorder.confirmationEmailStatus === "failed"
           ? "Your order is saved, but we couldn’t send the confirmation email. You can view your order in My order."
-          : "Your order is saved. Payment details follow after review; you can view your confirmation in My order.",
+          : "Confirmation email sent! If you don’t see it in your inbox, please check your spam or junk folder.",
       });
       navigate("/account");
     } catch (error) {
@@ -264,10 +265,14 @@ const PreorderPage = () => {
           <span className="text-emerald-500 font-medium">-₹{totalSavings.toLocaleString("en-IN")}</span>
         </div>
         <div className="flex justify-between text-muted-foreground text-xs">
-          <span>Shipping</span>
-          <span className="text-accent font-semibold">Free</span>
+          <span>Delivery charges</span>
+          <span>₹{XUMI.deliveryCharge.toLocaleString("en-IN")}</span>
         </div>
-        <div className="flex justify-between font-display text-lg font-bold pt-2 border-t border-border/60">
+        <div className="flex justify-between font-display text-base font-bold pt-2 border-t border-border/60">
+          <span>Order total</span>
+          <span>₹{totalWithDelivery.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="flex justify-between font-display text-lg font-bold pt-1">
           <span>Pay today</span>
           <span className="text-accent">₹0</span>
         </div>

@@ -34,7 +34,8 @@ const getAuthBaseUrl = () => {
   );
 };
 
-const PRODUCT = { id: "xumi", name: "XUMI", unitPrice: 3999, currency: "INR" } as const;
+const PRODUCT = { id: "xumi", name: "XUMI", unitPrice: 1999, currency: "INR" } as const;
+const DELIVERY_CHARGE = 89;
 
 const requestPaymentSchema = z.object({ paymentUrl: z.string().url().optional() });
 
@@ -156,7 +157,7 @@ app.post("/api/preorders", authenticate, asyncRoute(async (request, response) =>
   if (existing[0]) return response.status(200).json({ preorder: serializePreorder(existing[0]), existing: true });
   const quantity = input.quantity ?? 1;
   const productName = input.edition ? `${PRODUCT.name} (${input.edition})` : PRODUCT.name;
-  const totalAmount = PRODUCT.unitPrice * quantity;
+  const totalAmount = PRODUCT.unitPrice * quantity + DELIVERY_CHARGE;
   const rows = await sql`
     INSERT INTO preorders (user_id, user_email, customer_name, phone, address_line1, city, state, pincode, product_id, product_name, edition, customization, quantity, unit_price, total_amount, currency, status, booking_expires_at, client_id)
     VALUES (${user.id}, ${user.email}, ${input.customerName}, ${input.phone}, ${input.address.line1}, ${input.address.city}, ${input.address.state}, ${input.address.pincode}, ${PRODUCT.id}, ${productName}, ${input.edition}, ${input.customization}, ${quantity}, ${PRODUCT.unitPrice}, ${totalAmount}, ${PRODUCT.currency}, 'received', NOW() + INTERVAL '15 days', 'default') RETURNING *
