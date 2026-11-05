@@ -16,7 +16,7 @@ export const XUMI = {
   description:
     "XUMI lives on your desk, reacts to your touch and slowly builds his own personality. 40+ expressions, five moods, focus sessions, a clock and little games — calm with a lot of character.",
   price: 1999,
-  originalPrice: 2999,
+  originalPrice: 3999,
   deliveryCharge: 89,
   currency: "₹",
   shipping: "Free shipping across India",
