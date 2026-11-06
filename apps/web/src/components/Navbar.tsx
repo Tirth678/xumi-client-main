@@ -130,8 +130,11 @@ const Navbar = () => {
               aria-label="Go to RoboCraft home"
             >
               <img
-                src={isMobile || scrolled ? "/logo-black.png" : "/logo.png"}
+                src={isMobile || scrolled ? "/logo-black.webp" : "/logo.webp"}
                 alt="RoboCraft logo"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className="h-12 w-auto md:h-full max-h-[6rem] object-contain transition-opacity duration-300"
               />
             </button>

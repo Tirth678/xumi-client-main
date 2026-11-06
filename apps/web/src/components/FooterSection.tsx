@@ -83,7 +83,7 @@ export default function FooterSection() {
     <DuneHaulFooter
       name=""
       brandHref="/"
-      logo={<img src="/logo-black.png" alt="RoboCraft logo" className="h-24 w-auto" />}
+      logo={<img src="/logo-black.webp" alt="RoboCraft logo" loading="lazy" decoding="async" className="h-24 w-auto" />}
       preset="auto"
       columns={columns}
       socials={[]}

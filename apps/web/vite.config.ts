@@ -22,17 +22,42 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist",
     sourcemap: false,
     minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production', // Remove console.logs in production
+        drop_debugger: true,
+        pure_funcs: mode === 'production' ? ['console.log', 'console.info'] : [],
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ["react", "react-dom", "react-router-dom"],
-          motion: ["framer-motion"],
-          ui: ["@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu"],
-          charts: ["recharts"],
-          markdown: ["react-markdown"],
+          // Split vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom'],
+          'router': ['react-router-dom'],
+          'motion': ['framer-motion'],
+          'radix-dialog': ['@radix-ui/react-dialog'],
+          'radix-forms': [
+            '@radix-ui/react-label',
+            '@radix-ui/react-select',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-radio-group',
+            '@radix-ui/react-switch',
+          ],
+          'radix-other': [
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-tabs',
+          ],
+          'charts': ['recharts'],
+          'markdown': ['react-markdown'],
+          'form': ['react-hook-form', '@hookform/resolvers', 'zod'],
         },
       },
     },
+    // Chunk size warning limit
+    chunkSizeWarningLimit: 600,
   },
   plugins: [react()].filter(Boolean),
   resolve: {

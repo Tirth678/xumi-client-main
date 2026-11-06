@@ -10,9 +10,11 @@ const HeroSection = () => {
   return (
     <section id="home" className="relative min-h-screen overflow-hidden">
       <img
-        src="/xumi-hero.png"
+        src="/xumi-hero.webp"
         alt="XUMI desk companion robot glowing under his logo on a wooden desk"
         decoding="async"
+        fetchPriority="high"
+        loading="eager"
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-hero-overlay" />

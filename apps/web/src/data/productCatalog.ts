@@ -1,9 +1,10 @@
-import xumiDesk from "@/assets/xumi/xumi-desk.jpg";
-import xumiHappy from "@/assets/xumi/xumi-happy.jpg";
-import xumiCozy from "@/assets/xumi/xumi-cozy.jpg";
-import xumiDizzy from "@/assets/xumi/xumi-dizzy.jpg";
-import xumiLove from "@/assets/xumi/xumi-love.jpg";
-import xumiAngry from "@/assets/xumi/xumi-angry.jpg";
+// Use WebP images for 70-80% smaller file sizes
+import xumiDesk from "@/assets/xumi/xumi-desk.webp";
+import xumiHappy from "@/assets/xumi/xumi-happy.webp";
+import xumiCozy from "@/assets/xumi/xumi-cozy.webp";
+import xumiDizzy from "@/assets/xumi/xumi-dizzy.webp";
+import xumiLove from "@/assets/xumi/xumi-love.webp";
+import xumiAngry from "@/assets/xumi/xumi-angry.webp";
 
 /**
  * XUMI is the only product this storefront sells. The company is still
